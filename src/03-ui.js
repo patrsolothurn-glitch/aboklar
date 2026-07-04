@@ -1,0 +1,109 @@
+// UI — ecrãs de auth e home provisória
+const $app = () => document.getElementById('app');
+
+function logoBlock() {
+  return `
+    <div class="logo-block">
+      <img src="assets/icon-512.png" alt="AboKlar" class="logo-img">
+      <h1 class="brand">Abo<span class="klar">Klar</span></h1>
+      <p class="tagline">${t('tagline')}</p>
+    </div>`;
+}
+
+function errBox(msg) {
+  return msg ? `<div class="err">${msg}</div>` : '';
+}
+
+function renderAuth(view, ctx = {}) {
+  let inner = '';
+  if (view === 'login') {
+    inner = `
+      ${errBox(ctx.err)}
+      <input id="f-email" type="email" placeholder="${t('email')}" autocomplete="email" value="${ctx.email || ''}">
+      <input id="f-pw" type="password" placeholder="${t('password')}" autocomplete="current-password">
+      <button class="btn-primary" onclick="uiLogin()">${t('login')}</button>
+      <button class="btn-link" onclick="renderAuth('reset')">${t('forgot')}</button>
+      <div class="divider"></div>
+      <p class="muted">${t('no_account')}</p>
+      <button class="btn-secondary" onclick="renderAuth('register')">${t('register')}</button>`;
+  } else if (view === 'register') {
+    inner = `
+      ${errBox(ctx.err)}
+      <input id="f-name" type="text" placeholder="${t('name')}" autocomplete="name" value="${ctx.name || ''}">
+      <input id="f-email" type="email" placeholder="${t('email')}" autocomplete="email" value="${ctx.email || ''}">
+      <input id="f-pw" type="password" placeholder="${t('password')}" autocomplete="new-password">
+      <input id="f-pw2" type="password" placeholder="${t('password2')}" autocomplete="new-password">
+      <button class="btn-primary" onclick="uiRegister()">${t('register')}</button>
+      <div class="divider"></div>
+      <p class="muted">${t('has_account')}</p>
+      <button class="btn-secondary" onclick="renderAuth('login')">${t('login')}</button>`;
+  } else if (view === 'confirm') {
+    inner = `
+      <div class="confirm-box">
+        <h2>${t('confirm_title')}</h2>
+        <p><strong>${ctx.email || ''}</strong></p>
+        <p class="muted">${t('confirm_hint')}</p>
+      </div>
+      <button class="btn-secondary" onclick="renderAuth('login', {email:'${ctx.email || ''}'})">${t('login')}</button>`;
+  } else if (view === 'reset') {
+    inner = `
+      ${ctx.sent ? `<div class="ok">${t('reset_sent')}</div>` : errBox(ctx.err)}
+      <input id="f-email" type="email" placeholder="${t('email')}" autocomplete="email" value="${ctx.email || ''}">
+      <button class="btn-primary" onclick="uiReset()">${t('reset_send')}</button>
+      <button class="btn-link" onclick="renderAuth('login')">${t('back')}</button>`;
+  }
+  $app().innerHTML = `<div class="auth-card">${logoBlock()}${inner}</div>`;
+}
+
+async function renderHome(user) {
+  const name = (user.user_metadata && user.user_metadata.display_name) || user.email;
+  $app().innerHTML = `
+    <div class="auth-card">
+      ${logoBlock()}
+      <div class="confirm-box">
+        <h2>${t('welcome')}, ${name} 👋</h2>
+        <p class="muted">${t('home_soon')}</p>
+      </div>
+      <button class="btn-secondary" onclick="doLogout()">${t('logout')}</button>
+    </div>`;
+}
+
+// ---- handlers ----
+async function uiLogin() {
+  const email = document.getElementById('f-email').value.trim();
+  const pw = document.getElementById('f-pw').value;
+  if (!email || !pw) return renderAuth('login', { err: t('err_fill'), email });
+  try {
+    await doLogin(email, pw);
+    boot();
+  } catch (e) { renderAuth('login', { err: e.message, email }); }
+}
+
+async function uiRegister() {
+  const name = document.getElementById('f-name').value.trim();
+  const email = document.getElementById('f-email').value.trim();
+  const pw = document.getElementById('f-pw').value;
+  const pw2 = document.getElementById('f-pw2').value;
+  if (!name || !email || !pw || !pw2) return renderAuth('register', { err: t('err_fill'), name, email });
+  if (pw !== pw2) return renderAuth('register', { err: t('err_pw_match'), name, email });
+  if (pw.length < 8) return renderAuth('register', { err: t('err_pw_short'), name, email });
+  try {
+    await doRegister(name, email, pw);
+    renderAuth('confirm', { email });
+  } catch (e) { renderAuth('register', { err: e.message, name, email }); }
+}
+
+async function uiReset() {
+  const email = document.getElementById('f-email').value.trim();
+  if (!email) return renderAuth('reset', { err: t('err_fill') });
+  await doReset(email);
+  renderAuth('reset', { sent: true, email });
+}
+
+// ---- arranque ----
+async function boot() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session && session.user) renderHome(session.user);
+  else renderAuth('login');
+}
+document.addEventListener('DOMContentLoaded', boot);
