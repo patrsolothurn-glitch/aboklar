@@ -1,4 +1,4 @@
-// AboKlar — build 4 — 2026-07-05T07:29:10.566Z
+// AboKlar — build 5 — 2026-07-05T07:33:09.532Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -30,6 +30,12 @@ const I18N = {
     logout: 'Sair',
     welcome: 'Olá',
     home_soon: 'Subscrições e Faturas chegam no próximo passo 🚧',
+    subs: 'Subscrições',
+    subs_hint: 'mensal · anual',
+    bills: 'Faturas',
+    bills_hint: '✓ pago · arquivo',
+    settings: 'Definições',
+    section_soon: 'Esta secção chega no próximo passo 🚧',
     err_fill: 'Preenche todos os campos.',
     err_pw_match: 'As palavras-passe não coincidem.',
     err_pw_short: 'A palavra-passe deve ter pelo menos 8 caracteres.',
@@ -158,14 +164,54 @@ function renderAuth(view, ctx = {}) {
 async function renderHome(user) {
   const name = (user.user_metadata && user.user_metadata.display_name) || user.email;
   $app().innerHTML = `
-    <div class="auth-card">
-      ${logoBlock()}
-      <div class="confirm-box">
-        <h2>${t('welcome')}, ${name} 👋</h2>
-        <p class="muted">${t('home_soon')}</p>
+    <div class="page">
+      <header class="topbar">
+        <div class="topbar-brand">
+          <img src="assets/icon-512.png" alt="" class="topbar-logo">
+          <span class="topbar-name">Abo<span class="klar">Klar</span></span>
+        </div>
+        <button class="icon-btn" onclick="renderSettings()" title="${t('settings')}">⚙️</button>
+      </header>
+      <p class="greet">${t('welcome')}, ${name} 👋</p>
+      <div class="home-grid">
+        <button class="home-card card-subs" onclick="renderSubs()">
+          <span class="home-emoji">📋</span>
+          <span class="home-title">${t('subs')}</span>
+          <span class="home-hint">${t('subs_hint')}</span>
+        </button>
+        <button class="home-card card-bills" onclick="renderBills()">
+          <span class="home-emoji">🧾</span>
+          <span class="home-title">${t('bills')}</span>
+          <span class="home-hint">${t('bills_hint')}</span>
+        </button>
       </div>
-      <button class="btn-secondary" onclick="doLogout()">${t('logout')}</button>
     </div>`;
+}
+
+function sectionShell(title, inner) {
+  $app().innerHTML = `
+    <div class="page">
+      <header class="topbar">
+        <button class="icon-btn" onclick="boot()">←</button>
+        <span class="topbar-name">${title}</span>
+        <span style="width:40px"></span>
+      </header>
+      ${inner}
+    </div>`;
+}
+
+function renderSubs() {
+  sectionShell(t('subs'), `<p class="muted" style="margin-top:40px">${t('section_soon')}</p>`);
+}
+
+function renderBills() {
+  sectionShell(t('bills'), `<p class="muted" style="margin-top:40px">${t('section_soon')}</p>`);
+}
+
+function renderSettings() {
+  sectionShell(t('settings'), `
+    <p class="muted" style="margin-top:40px">${t('section_soon')}</p>
+    <button class="btn-secondary" style="margin-top:24px" onclick="doLogout()">${t('logout')}</button>`);
 }
 
 // ---- handlers ----
