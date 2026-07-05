@@ -1,4 +1,4 @@
-// AboKlar — build 25 — 2026-07-05T11:48:17.697Z
+// AboKlar — build 26 — 2026-07-05T11:54:15.656Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -879,6 +879,7 @@ function renderAuth(view, ctx = {}) {
 
 async function renderHome(user) {
   localStorage.setItem('aboklar_last_view', 'home');
+  const lastSec = localStorage.getItem('aboklar_last_section') || 'subs';
   const name = (user.user_metadata && user.user_metadata.display_name) || user.email;
   $app().innerHTML = `
     <div class="page home-page">
@@ -888,12 +889,12 @@ async function renderHome(user) {
       </div>
       <p class="greet greet-center">${t('welcome')}, ${name} 👋</p>
       <div class="home-grid">
-        <button class="home-card card-subs" onclick="renderSubs()">
+        <button class="home-card ${lastSec === 'subs' ? 'card-active' : 'card-idle'}" onclick="renderSubs()">
           <span class="home-emoji">📋</span>
           <span class="home-title">${t('subs')}</span>
           <span class="home-hint">${t('subs_hint')}</span>
         </button>
-        <button class="home-card card-bills" onclick="renderBills()">
+        <button class="home-card ${lastSec === 'bills' ? 'card-active' : 'card-idle'}" onclick="renderBills()">
           <span class="home-emoji">🧾</span>
           <span class="home-title">${t('bills')}</span>
           <span class="home-hint">${t('bills_hint')}</span>
@@ -1083,6 +1084,7 @@ function setSubsSort(mode) { SUBS_SORT = mode; renderSubs(); }
 
 async function renderSubs() {
   localStorage.setItem('aboklar_last_view', 'subs');
+  localStorage.setItem('aboklar_last_section', 'subs');
   const subs = await loadSubs();
   const totals = subsTotals(subs);
 
@@ -1352,6 +1354,7 @@ function shiftArch(delta) { ARCH_PERIOD = shiftPeriod(ARCH_PERIOD, delta); rende
 
 async function renderBills() {
   localStorage.setItem('aboklar_last_view', 'bills');
+  localStorage.setItem('aboklar_last_section', 'bills');
   if (!ARCH_PERIOD) ARCH_PERIOD = curPeriod();
   await loadBills();
 

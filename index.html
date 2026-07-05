@@ -82,8 +82,8 @@
     flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
     padding:34px 12px; border-radius:24px; text-align:center; min-height:190px;
   }
-  .card-subs { background:linear-gradient(135deg,#1F2937,#0B0F14); color:#F5F5F4; }
-  .card-bills { background:rgba(245,158,11,.12); border:1.5px solid var(--amber); color:var(--amber-ink); }
+  .card-idle { background:linear-gradient(135deg,#1F2937,#0B0F14); color:#F5F5F4; border:1.5px solid transparent; }
+  .card-active { background:rgba(245,158,11,.12); border:1.5px solid var(--amber); color:var(--amber-ink); }
   .home-emoji { font-size:42px; }
   .home-title { font-size:21px; font-weight:800; }
   .home-hint { font-size:13.5px; opacity:.7; }
@@ -230,9 +230,9 @@
   .confirm-box p { margin:6px 0; font-size:15px; }
 </style>
 </head>
-<body data-build="25">
+<body data-build="26">
   <div id="app"><p style="color:var(--muted)">A carregar…</p></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="app.js?v=25"></script>
+  <script src="app.js?v=26"></script>
 </body>
 </html>

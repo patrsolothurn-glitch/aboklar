@@ -70,6 +70,7 @@ function renderAuth(view, ctx = {}) {
 
 async function renderHome(user) {
   localStorage.setItem('aboklar_last_view', 'home');
+  const lastSec = localStorage.getItem('aboklar_last_section') || 'subs';
   const name = (user.user_metadata && user.user_metadata.display_name) || user.email;
   $app().innerHTML = `
     <div class="page home-page">
@@ -79,12 +80,12 @@ async function renderHome(user) {
       </div>
       <p class="greet greet-center">${t('welcome')}, ${name} 👋</p>
       <div class="home-grid">
-        <button class="home-card card-subs" onclick="renderSubs()">
+        <button class="home-card ${lastSec === 'subs' ? 'card-active' : 'card-idle'}" onclick="renderSubs()">
           <span class="home-emoji">📋</span>
           <span class="home-title">${t('subs')}</span>
           <span class="home-hint">${t('subs_hint')}</span>
         </button>
-        <button class="home-card card-bills" onclick="renderBills()">
+        <button class="home-card ${lastSec === 'bills' ? 'card-active' : 'card-idle'}" onclick="renderBills()">
           <span class="home-emoji">🧾</span>
           <span class="home-title">${t('bills')}</span>
           <span class="home-hint">${t('bills_hint')}</span>

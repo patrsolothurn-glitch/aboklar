@@ -77,6 +77,7 @@ function shiftArch(delta) { ARCH_PERIOD = shiftPeriod(ARCH_PERIOD, delta); rende
 
 async function renderBills() {
   localStorage.setItem('aboklar_last_view', 'bills');
+  localStorage.setItem('aboklar_last_section', 'bills');
   if (!ARCH_PERIOD) ARCH_PERIOD = curPeriod();
   await loadBills();
 
