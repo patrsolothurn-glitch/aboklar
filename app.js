@@ -1,4 +1,4 @@
-// AboKlar — build 17 — 2026-07-05T10:02:32.568Z
+// AboKlar — build 18 — 2026-07-05T11:12:38.847Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -865,15 +865,12 @@ function renderAuth(view, ctx = {}) {
 async function renderHome(user) {
   const name = (user.user_metadata && user.user_metadata.display_name) || user.email;
   $app().innerHTML = `
-    <div class="page">
-      <header class="topbar">
-        <div class="topbar-brand">
-          <img src="assets/icon-512.png" alt="" class="topbar-logo">
-          <span class="topbar-name">Abo<span class="klar">Klar</span></span>
-        </div>
-        <button class="icon-btn" onclick="renderSettings()" title="${t('settings')}">⚙️</button>
-      </header>
-      <p class="greet">${t('welcome')}, ${name} 👋</p>
+    <div class="page home-page">
+      <div class="home-logo-block">
+        <img src="assets/icon-512.png" alt="AboKlar" class="home-logo">
+        <h1 class="brand home-brand">Abo<span class="klar">Klar</span></h1>
+      </div>
+      <p class="greet greet-center">${t('welcome')}, ${name} 👋</p>
       <div class="home-grid">
         <button class="home-card card-subs" onclick="renderSubs()">
           <span class="home-emoji">📋</span>
@@ -886,7 +883,10 @@ async function renderHome(user) {
           <span class="home-hint">${t('bills_hint')}</span>
         </button>
       </div>
-      <button class="btn-help" onclick="renderHelp()">❓ ${t('help')}</button>
+      <div class="home-bottom">
+        <button class="btn-help-sm" onclick="renderHelp()">❓ ${t('help')}</button>
+        <button class="icon-btn" onclick="renderSettings()" title="${t('settings')}">⚙️</button>
+      </div>
     </div>`;
 }
 
