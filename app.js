@@ -1,4 +1,4 @@
-// AboKlar — build 14 — 2026-07-05T09:07:48.136Z
+// AboKlar — build 15 — 2026-07-05T09:12:10.629Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -12,6 +12,14 @@ const sb = window.supabase.createClient(SUPA_URL, SUPA_KEY);
 const I18N = {
   pt: {
     tagline: 'Subscrições e faturas, claro.',
+    push_lbl: 'Notificações',
+    push_on_lbl: 'Ativadas neste dispositivo',
+    push_off_lbl: 'Desativadas',
+    push_enable: 'Ativar notificações 🔔',
+    push_disable: 'Desativar notificações 🔕',
+    push_on: 'Notificações ativadas ✓',
+    push_off: 'Notificações desativadas',
+    push_denied: 'Permissão negada no browser.',
     months: ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'],
     email: 'Email',
     password: 'Palavra-passe',
@@ -143,6 +151,14 @@ const I18N = {
   },
   de: {
     tagline: 'Abos und Rechnungen, klar.',
+    push_lbl: 'Benachrichtigungen',
+    push_on_lbl: 'Auf diesem Gerät aktiviert',
+    push_off_lbl: 'Deaktiviert',
+    push_enable: 'Benachrichtigungen aktivieren 🔔',
+    push_disable: 'Benachrichtigungen deaktivieren 🔕',
+    push_on: 'Benachrichtigungen aktiviert ✓',
+    push_off: 'Benachrichtigungen deaktiviert',
+    push_denied: 'Berechtigung im Browser verweigert.',
     months: ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'],
     email: 'E-Mail',
     password: 'Passwort',
@@ -274,6 +290,14 @@ const I18N = {
   },
   fr: {
     tagline: 'Abonnements et factures, clairement.',
+    push_lbl: 'Notifications',
+    push_on_lbl: 'Activées sur cet appareil',
+    push_off_lbl: 'Désactivées',
+    push_enable: 'Activer les notifications 🔔',
+    push_disable: 'Désactiver les notifications 🔕',
+    push_on: 'Notifications activées ✓',
+    push_off: 'Notifications désactivées',
+    push_denied: 'Permission refusée dans le navigateur.',
     months: ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'],
     email: 'E-mail',
     password: 'Mot de passe',
@@ -405,6 +429,14 @@ const I18N = {
   },
   it: {
     tagline: 'Abbonamenti e fatture, chiaro.',
+    push_lbl: 'Notifiche',
+    push_on_lbl: 'Attive su questo dispositivo',
+    push_off_lbl: 'Disattivate',
+    push_enable: 'Attiva notifiche 🔔',
+    push_disable: 'Disattiva notifiche 🔕',
+    push_on: 'Notifiche attivate ✓',
+    push_off: 'Notifiche disattivate',
+    push_denied: 'Permesso negato nel browser.',
     months: ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'],
     email: 'E-mail',
     password: 'Password',
@@ -536,6 +568,14 @@ const I18N = {
   },
   en: {
     tagline: 'Subscriptions and bills, clear.',
+    push_lbl: 'Notifications',
+    push_on_lbl: 'Enabled on this device',
+    push_off_lbl: 'Disabled',
+    push_enable: 'Enable notifications 🔔',
+    push_disable: 'Disable notifications 🔕',
+    push_on: 'Notifications enabled ✓',
+    push_off: 'Notifications disabled',
+    push_denied: 'Permission denied in the browser.',
     months: ['January','February','March','April','May','June','July','August','September','October','November','December'],
     email: 'Email',
     password: 'Password',
@@ -879,7 +919,10 @@ async function boot() {
     renderHome(session.user);
   } else renderAuth('login');
 }
-document.addEventListener('DOMContentLoaded', boot);
+document.addEventListener('DOMContentLoaded', () => {
+  boot();
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+});
 
 
 // ===== 04-subs.js =====
@@ -1567,6 +1610,7 @@ function applyTheme(mode) {
 async function renderSettings() {
   if (!PROFILE) await loadProfile();
   const p = PROFILE || {};
+  const pushOn = await pushIsEnabled();
   sectionShell(t('settings'), `
     <div class="form">
       <label class="lbl">${t('set_name')}</label>
@@ -1589,6 +1633,9 @@ async function renderSettings() {
         <button class="seg-btn${p.theme === 'dark' ? ' on' : ''}" onclick="setTheme(this,'dark')">${t('theme_dark')}</button>
       </div>
       <input type="hidden" id="set-theme" value="${p.theme || 'auto'}">
+
+      <label class="lbl">${t('push_lbl')} — ${pushOn ? t('push_on_lbl') : t('push_off_lbl')}</label>
+      <button class="btn-secondary" onclick="togglePush(this)">${pushOn ? t('push_disable') : t('push_enable')}</button>
 
       <div id="set-msg"></div>
       <button class="btn-primary" onclick="saveSettings()">${t('save')}</button>
@@ -1624,5 +1671,67 @@ async function saveSettings() {
   applyTheme(theme);
   document.getElementById('set-msg').innerHTML = `<div class="ok">${t('saved')}</div>`;
   setTimeout(renderSettings, 700);
+}
+
+
+// ===== 07-push.js =====
+// Push notifications — subscrição do dispositivo
+const VAPID_PUBLIC = 'BA2j4REGfVURlASSywNEFnaiXS3Q2ZYZ56__ap0YMQKJI0q9LTBHHQ8dtPVTZ80S9tuNvbyS8pF7Lx2LooTUcIU';
+
+function urlB64ToUint8(base64) {
+  const padding = '='.repeat((4 - base64.length % 4) % 4);
+  const b64 = (base64 + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(b64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+async function registerSW() {
+  if (!('serviceWorker' in navigator)) return null;
+  return navigator.serviceWorker.register('sw.js');
+}
+
+async function pushIsEnabled() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
+  const reg = await navigator.serviceWorker.getRegistration();
+  if (!reg) return false;
+  const sub = await reg.pushManager.getSubscription();
+  return !!sub;
+}
+
+async function enablePush() {
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { showToast(t('push_denied')); return false; }
+    const reg = await registerSW();
+    await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlB64ToUint8(VAPID_PUBLIC)
+    });
+    const { data: { user } } = await sb.auth.getUser();
+    await sb.from('push_subscriptions').insert({ user_id: user.id, subscription: sub.toJSON() });
+    showToast(t('push_on'));
+    return true;
+  } catch (e) { console.error(e); showToast(t('err_generic')); return false; }
+}
+
+async function disablePush() {
+  try {
+    const reg = await navigator.serviceWorker.getRegistration();
+    const sub = reg && await reg.pushManager.getSubscription();
+    if (sub) {
+      const json = sub.toJSON();
+      await sub.unsubscribe();
+      await sb.from('push_subscriptions').delete().eq('subscription->>endpoint', json.endpoint);
+    }
+    showToast(t('push_off'));
+    return true;
+  } catch (e) { console.error(e); return false; }
+}
+
+async function togglePush(btn) {
+  const on = await pushIsEnabled();
+  const ok = on ? await disablePush() : await enablePush();
+  if (ok) renderSettings();
 }
 

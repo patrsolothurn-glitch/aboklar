@@ -165,4 +165,7 @@ async function boot() {
     renderHome(session.user);
   } else renderAuth('login');
 }
-document.addEventListener('DOMContentLoaded', boot);
+document.addEventListener('DOMContentLoaded', () => {
+  boot();
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+});

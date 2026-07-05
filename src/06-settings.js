@@ -28,6 +28,7 @@ function applyTheme(mode) {
 async function renderSettings() {
   if (!PROFILE) await loadProfile();
   const p = PROFILE || {};
+  const pushOn = await pushIsEnabled();
   sectionShell(t('settings'), `
     <div class="form">
       <label class="lbl">${t('set_name')}</label>
@@ -50,6 +51,9 @@ async function renderSettings() {
         <button class="seg-btn${p.theme === 'dark' ? ' on' : ''}" onclick="setTheme(this,'dark')">${t('theme_dark')}</button>
       </div>
       <input type="hidden" id="set-theme" value="${p.theme || 'auto'}">
+
+      <label class="lbl">${t('push_lbl')} — ${pushOn ? t('push_on_lbl') : t('push_off_lbl')}</label>
+      <button class="btn-secondary" onclick="togglePush(this)">${pushOn ? t('push_disable') : t('push_enable')}</button>
 
       <div id="set-msg"></div>
       <button class="btn-primary" onclick="saveSettings()">${t('save')}</button>
