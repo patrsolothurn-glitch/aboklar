@@ -14,13 +14,26 @@ function errBox(msg) {
   return msg ? `<div class="err">${msg}</div>` : '';
 }
 
+function pwField(id, placeholder, autocomplete) {
+  return `<div class="pw-wrap">
+    <input id="${id}" type="password" placeholder="${placeholder}" autocomplete="${autocomplete}">
+    <button type="button" class="pw-eye" onclick="togglePw('${id}', this)">👁</button>
+  </div>`;
+}
+
+function togglePw(id, btn) {
+  const el = document.getElementById(id);
+  if (el.type === 'password') { el.type = 'text'; btn.classList.add('on'); }
+  else { el.type = 'password'; btn.classList.remove('on'); }
+}
+
 function renderAuth(view, ctx = {}) {
   let inner = '';
   if (view === 'login') {
     inner = `
       ${errBox(ctx.err)}
       <input id="f-email" type="email" placeholder="${t('email')}" autocomplete="email" value="${ctx.email || ''}">
-      <input id="f-pw" type="password" placeholder="${t('password')}" autocomplete="current-password">
+      ${pwField('f-pw', t('password'), 'current-password')}
       <button class="btn-primary" onclick="uiLogin()">${t('login')}</button>
       <button class="btn-link" onclick="renderAuth('reset')">${t('forgot')}</button>
       <div class="divider"></div>
@@ -31,8 +44,8 @@ function renderAuth(view, ctx = {}) {
       ${errBox(ctx.err)}
       <input id="f-name" type="text" placeholder="${t('name')}" autocomplete="name" value="${ctx.name || ''}">
       <input id="f-email" type="email" placeholder="${t('email')}" autocomplete="email" value="${ctx.email || ''}">
-      <input id="f-pw" type="password" placeholder="${t('password')}" autocomplete="new-password">
-      <input id="f-pw2" type="password" placeholder="${t('password2')}" autocomplete="new-password">
+      ${pwField('f-pw', t('password'), 'new-password')}
+      ${pwField('f-pw2', t('password2'), 'new-password')}
       <button class="btn-primary" onclick="uiRegister()">${t('register')}</button>
       <div class="divider"></div>
       <p class="muted">${t('has_account')}</p>

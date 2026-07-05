@@ -50,12 +50,20 @@
   .ok { background:rgba(5,150,105,.1); color:var(--ok); padding:12px 14px; border-radius:12px; font-size:14px; }
   .confirm-box { text-align:center; padding:12px 0; }
   .confirm-box h2 { font-size:20px; margin-bottom:10px; }
+  .pw-wrap { position:relative; }
+  .pw-wrap input { padding-right:52px; }
+  .pw-eye {
+    position:absolute; right:6px; top:50%; transform:translateY(-50%);
+    background:none; border:none; font-size:20px; padding:8px;
+    opacity:.45; line-height:1;
+  }
+  .pw-eye.on { opacity:1; }
   .confirm-box p { margin:6px 0; font-size:15px; }
 </style>
 </head>
-<body data-build="2">
+<body data-build="3">
   <div id="app"><p style="color:var(--muted)">A carregar…</p></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="app.js?v=2"></script>
+  <script src="app.js?v=3"></script>
 </body>
 </html>
