@@ -27,18 +27,27 @@ function subLetter(ch) {
 
 function nextRenewal(s) {
   const today = new Date(); today.setHours(0,0,0,0);
-  let d = null;
-  if (s.billing_cycle === 'monthly' && s.renewal_day) {
-    d = new Date(today.getFullYear(), today.getMonth(), s.renewal_day);
-    if (d < today) d = new Date(today.getFullYear(), today.getMonth() + 1, s.renewal_day);
-  } else if (s.billing_cycle === 'yearly' && s.renewal_date) {
-    const rd = new Date(s.renewal_date);
-    d = new Date(today.getFullYear(), rd.getMonth(), rd.getDate());
-    if (d < today) d = new Date(today.getFullYear() + 1, rd.getMonth(), rd.getDate());
+  let base = null;
+  if (s.renewal_date) base = new Date(s.renewal_date + 'T00:00:00');
+  else if (s.billing_cycle === 'monthly' && s.renewal_day)
+    base = new Date(today.getFullYear(), today.getMonth(), s.renewal_day);
+  if (!base) return null;
+
+  let d = new Date(base);
+  const dayWanted = base.getDate();
+  let guard = 0;
+  while (d < today && guard++ < 600) {
+    if (s.billing_cycle === 'yearly') {
+      d = new Date(d.getFullYear() + 1, d.getMonth(), dayWanted);
+    } else {
+      let m = d.getMonth() + 1, y = d.getFullYear();
+      if (m > 11) { m = 0; y++; }
+      const lastDay = new Date(y, m + 1, 0).getDate();
+      d = new Date(y, m, Math.min(dayWanted, lastDay));
+    }
   }
-  if (!d) return null;
   const days = Math.round((d - today) / 86400000);
-  const iso = d.toISOString().slice(0, 10);
+  const iso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   return { date: iso, days };
 }
 
@@ -192,14 +201,8 @@ function renderSubForm(id) {
         <button type="button" class="seg-btn${cycle === 'yearly' ? ' on' : ''}" onclick="segCycle(this,'yearly')">${t('yearly')}</button>
       </div>
       <input type="hidden" id="s-cycle" value="${cycle}">
-      <div id="s-day-wrap"${cycle === 'yearly' ? ' style="display:none"' : ''}>
-        <label class="lbl">${t('renewal_day')}</label>
-        <input id="s-day" type="number" min="1" max="31" inputmode="numeric" value="${s && s.renewal_day ? s.renewal_day : ''}">
-      </div>
-      <div id="s-date-wrap"${cycle === 'monthly' ? ' style="display:none"' : ''}>
-        <label class="lbl">${t('renewal_date')}</label>
-        <input id="s-date" type="date" value="${s && s.renewal_date ? s.renewal_date : ''}">
-      </div>
+      <label class="lbl">${t('renewal_date')}</label>
+      <input id="s-date" type="date" value="${s && s.renewal_date ? s.renewal_date : ''}">
       <div id="s-err"></div>
       <button class="btn-primary" onclick="saveSub(${isEdit ? `'${s.id}'` : 'null'})">${t('save')}</button>
       <button class="btn-secondary" onclick="renderSubs()">${t('cancel')}</button>
@@ -212,21 +215,18 @@ function segCycle(btn, val) {
   document.getElementById('s-cycle').value = val;
   document.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('on'));
   btn.classList.add('on');
-  document.getElementById('s-day-wrap').style.display = val === 'monthly' ? '' : 'none';
-  document.getElementById('s-date-wrap').style.display = val === 'yearly' ? '' : 'none';
 }
 
 async function saveSub(id) {
   const g = i => document.getElementById(i);
   const name = g('s-name').value.trim();
   const amount = parseFloat(g('s-amount').value);
-  const day = parseInt(g('s-day').value, 10);
   const cycle = g('s-cycle').value;
+  const rdate = g('s-date').value || null;
   const errEl = g('s-err');
 
   if (!name) { errEl.innerHTML = `<div class="err">${t('err_fill')}</div>`; return; }
   if (!amount || amount <= 0) { errEl.innerHTML = `<div class="err">${t('err_amount')}</div>`; return; }
-  if (cycle === 'monthly' && day && (day < 1 || day > 31)) { errEl.innerHTML = `<div class="err">${t('err_day')}</div>`; return; }
 
   const { data: { user } } = await sb.auth.getUser();
   const row = {
@@ -239,8 +239,8 @@ async function saveSub(id) {
     bank: g('s-bank').value.trim() || null,
     card_last4: g('s-card').value.trim() || null,
     billing_cycle: cycle,
-    renewal_day: cycle === 'monthly' && day ? day : null,
-    renewal_date: cycle === 'yearly' ? (g('s-date').value || null) : null
+    renewal_day: cycle === 'monthly' && rdate ? parseInt(rdate.slice(8, 10), 10) : null,
+    renewal_date: rdate
   };
 
   let error;
