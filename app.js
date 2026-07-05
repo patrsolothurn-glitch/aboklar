@@ -1,4 +1,4 @@
-// AboKlar — build 27 — 2026-07-05T12:26:05.685Z
+// AboKlar — build 28 — 2026-07-05T12:32:18.633Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -1310,6 +1310,8 @@ function toggleArchTotal() {
 }
 let PAYMENTS_CACHE = [];
 let BILLS_TAB = 'bills'; // 'bills' | 'archive'
+let BILLS_GROUP = 'due'; // 'due' | 'paid' | 'later' | 'inactive'
+function setBillsGroup(g) { BILLS_GROUP = g; renderBills(); }
 let ARCH_PERIOD = null;  // 'YYYY-MM'
 const MONTHS_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
@@ -1442,15 +1444,19 @@ async function renderBills() {
     groups.due.sort(byDays); groups.later.sort(byDays);
     groups.paid.sort((a, c) => a.name.localeCompare(c.name));
 
-    const section = (title, arr) => arr.length
-      ? `<div class="group-title">${title}</div>` + arr.map(billRow).join('')
-      : '';
+    const groupBtn = (key, label) =>
+      `<button class="seg-btn grp-btn${BILLS_GROUP === key ? ' on' : ''}" onclick="setBillsGroup('${key}')">${label} (${groups[key].length})</button>`;
 
+    const groupBtns = `<div class="grp-row">
+      ${groupBtn('due', t('group_due'))}
+      ${groupBtn('paid', t('group_paid'))}
+      ${groupBtn('later', t('group_later'))}
+      ${groupBtn('inactive', t('group_inactive'))}
+    </div>`;
+
+    const sel = groups[BILLS_GROUP] || [];
     const list = BILLS_CACHE.length
-      ? section(t('group_due'), groups.due) +
-        section(t('group_later'), groups.later) +
-        section(t('group_paid'), groups.paid) +
-        section(t('group_inactive'), groups.inactive)
+      ? groupBtns + (sel.length ? sel.map(billRow).join('') : `<p class="muted" style="margin-top:24px">—</p>`)
       : `<p class="muted" style="margin-top:30px">${t('no_bills')}</p>`;
 
     sectionShell(t('bills'), `
