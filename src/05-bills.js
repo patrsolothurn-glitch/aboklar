@@ -12,7 +12,8 @@ function curPeriod() {
 
 function periodLabel(p) {
   const [y, m] = p.split('-');
-  return `${MONTHS_PT[parseInt(m, 10) - 1]} ${y}`;
+  const months = t('months');
+  return `${months[parseInt(m, 10) - 1]} ${y}`;
 }
 
 function shiftPeriod(p, delta) {
