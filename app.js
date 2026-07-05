@@ -1,4 +1,4 @@
-// AboKlar — build 22 — 2026-07-05T11:30:25.270Z
+// AboKlar — build 23 — 2026-07-05T11:33:44.295Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -989,13 +989,19 @@ const PAY_METHODS = ['Débito', 'Cartão', 'Twint', 'Apple Pay', 'Google Pay', '
 const COUNTRIES = ['CH', 'PT', 'DE', 'FR', 'IT', 'AT', 'ES', 'NL', 'BE', 'GB', 'US'];
 let SUBS_CACHE = [];
 let SUBS_SORT = 'date';
-let TOTALS_HIDDEN = localStorage.getItem('aboklar_hide_totals') === '1';
+const HIDE_STATE = {
+  monthly: localStorage.getItem('aboklar_hide_monthly') === '1',
+  yearly: localStorage.getItem('aboklar_hide_yearly') === '1'
+};
 
-function toggleTotals() {
-  TOTALS_HIDDEN = !TOTALS_HIDDEN;
-  localStorage.setItem('aboklar_hide_totals', TOTALS_HIDDEN ? '1' : '0');
-  document.querySelectorAll('.total-val').forEach(el => el.classList.toggle('hidden-val', TOTALS_HIDDEN));
-  document.querySelectorAll('.total-eye').forEach(el => el.textContent = TOTALS_HIDDEN ? '🙈' : '👁');
+function toggleTotals(which) {
+  HIDE_STATE[which] = !HIDE_STATE[which];
+  localStorage.setItem('aboklar_hide_' + which, HIDE_STATE[which] ? '1' : '0');
+  const card = document.getElementById('total-' + which);
+  if (!card) return;
+  card.querySelectorAll('.total-val').forEach(el => el.classList.toggle('hidden-val', HIDE_STATE[which]));
+  const eye = card.querySelector('.total-eye');
+  if (eye) eye.textContent = HIDE_STATE[which] ? '🙈' : '👁';
 }
 
 function fmtMoney(v, cur) { return `${Number(v).toFixed(2)} ${cur}`; }
@@ -1083,16 +1089,16 @@ async function renderSubs() {
     return ra.days - rb.days;
   });
 
-  const hv = TOTALS_HIDDEN ? ' hidden-val' : '';
-  const eye = TOTALS_HIDDEN ? '🙈' : '👁';
+  const hvM = HIDE_STATE.monthly ? ' hidden-val' : '';
+  const hvY = HIDE_STATE.yearly ? ' hidden-val' : '';
   const totalCards = Object.keys(totals).length
     ? `<div class="totals-row">
-        <div class="total-card" onclick="toggleTotals()">
-          <span class="total-label">${t('total_monthly')} <span class="total-eye">${eye}</span></span>
-          ${Object.entries(totals).map(([c, v]) => `<span class="total-val${hv}">${fmtMoney(v.monthly, c)}</span>`).join('')}</div>
-        <div class="total-card" onclick="toggleTotals()">
-          <span class="total-label">${t('total_yearly')} <span class="total-eye">${eye}</span></span>
-          ${Object.entries(totals).map(([c, v]) => `<span class="total-val${hv}">${fmtMoney(v.yearly, c)}</span>`).join('')}</div>
+        <div class="total-card" id="total-monthly" onclick="toggleTotals('monthly')">
+          <span class="total-label">${t('total_monthly')} <span class="total-eye">${HIDE_STATE.monthly ? '🙈' : '👁'}</span></span>
+          ${Object.entries(totals).map(([c, v]) => `<span class="total-val${hvM}">${fmtMoney(v.monthly, c)}</span>`).join('')}</div>
+        <div class="total-card" id="total-yearly" onclick="toggleTotals('yearly')">
+          <span class="total-label">${t('total_yearly')} <span class="total-eye">${HIDE_STATE.yearly ? '🙈' : '👁'}</span></span>
+          ${Object.entries(totals).map(([c, v]) => `<span class="total-val${hvY}">${fmtMoney(v.yearly, c)}</span>`).join('')}</div>
       </div>` : '';
 
   const list = sorted.length
