@@ -108,10 +108,6 @@ function sectionShell(title, inner) {
     </div>`;
 }
 
-function renderSubs() {
-  sectionShell(t('subs'), `<p class="muted" style="margin-top:40px">${t('section_soon')}</p>`);
-}
-
 function renderBills() {
   sectionShell(t('bills'), `<p class="muted" style="margin-top:40px">${t('section_soon')}</p>`);
 }
