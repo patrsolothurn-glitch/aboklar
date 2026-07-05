@@ -103,6 +103,23 @@
     background:none; color:var(--muted); font-size:14px; font-weight:500;
     border:1.5px dashed var(--border); border-radius:12px; padding:10px 16px;
   }
+  .weather-box { margin-top:16px; }
+  .weather-now {
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    margin-bottom:10px;
+  }
+  .wnow-icon { font-size:30px; }
+  .wnow-temp { font-size:26px; font-weight:800; }
+  .weather-week {
+    display:flex; gap:4px; justify-content:space-between;
+    background:var(--card); border:1.5px solid var(--border);
+    border-radius:16px; padding:12px 8px;
+  }
+  .wday { display:flex; flex-direction:column; align-items:center; gap:3px; flex:1; }
+  .wday-name { font-size:11px; color:var(--muted); font-weight:600; }
+  .wday-icon { font-size:18px; }
+  .wday-max { font-size:13px; font-weight:700; }
+  .wday-min { font-size:11.5px; color:var(--muted); }
   .help-sec { border:1.5px solid var(--border); border-radius:16px; margin-bottom:12px; overflow:hidden; }
   .help-sec summary {
     padding:16px; font-weight:700; font-size:16px; cursor:pointer; list-style:none;
@@ -210,9 +227,9 @@
   .confirm-box p { margin:6px 0; font-size:15px; }
 </style>
 </head>
-<body data-build="18">
+<body data-build="19">
   <div id="app"><p style="color:var(--muted)">A carregar…</p></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="app.js?v=18"></script>
+  <script src="app.js?v=19"></script>
 </body>
 </html>

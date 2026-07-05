@@ -89,11 +89,13 @@ async function renderHome(user) {
           <span class="home-hint">${t('bills_hint')}</span>
         </button>
       </div>
+      ${weatherBox()}
       <div class="home-bottom">
         <button class="btn-help-sm" onclick="renderHelp()">❓ ${t('help')}</button>
         <button class="icon-btn" onclick="renderSettings()" title="${t('settings')}">⚙️</button>
       </div>
     </div>`;
+  loadWeather();
 }
 
 function sectionShell(title, inner) {

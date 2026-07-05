@@ -1,4 +1,4 @@
-// AboKlar — build 18 — 2026-07-05T11:12:38.847Z
+// AboKlar — build 19 — 2026-07-05T11:15:54.884Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -12,6 +12,9 @@ const sb = window.supabase.createClient(SUPA_URL, SUPA_KEY);
 const I18N = {
   pt: {
     tagline: 'Subscrições e faturas, claro.',
+    weekdays_short: ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
+    weather_today: 'Hoje',
+    weather_enable: '📍 Mostrar o tempo (usa a localização)',
     next_due: 'Próximo vencimento',
     customer_ref_ph: 'Nº de cliente/contrato (opcional)',
     periodicity: 'Periodicidade',
@@ -159,6 +162,9 @@ const I18N = {
   },
   de: {
     tagline: 'Abos und Rechnungen, klar.',
+    weekdays_short: ['So','Mo','Di','Mi','Do','Fr','Sa'],
+    weather_today: 'Heute',
+    weather_enable: '📍 Wetter anzeigen (nutzt den Standort)',
     next_due: 'Nächste Fälligkeit',
     customer_ref_ph: 'Kunden-/Vertragsnummer (optional)',
     periodicity: 'Periodizität',
@@ -306,6 +312,9 @@ const I18N = {
   },
   fr: {
     tagline: 'Abonnements et factures, clairement.',
+    weekdays_short: ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'],
+    weather_today: "Aujourd'hui",
+    weather_enable: '📍 Afficher la météo (utilise la position)',
     next_due: 'Prochaine échéance',
     customer_ref_ph: 'Nº client/contrat (optionnel)',
     periodicity: 'Périodicité',
@@ -453,6 +462,9 @@ const I18N = {
   },
   it: {
     tagline: 'Abbonamenti e fatture, chiaro.',
+    weekdays_short: ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'],
+    weather_today: 'Oggi',
+    weather_enable: '📍 Mostra il meteo (usa la posizione)',
     next_due: 'Prossima scadenza',
     customer_ref_ph: 'Nº cliente/contratto (opzionale)',
     periodicity: 'Periodicità',
@@ -600,6 +612,9 @@ const I18N = {
   },
   en: {
     tagline: 'Subscriptions and bills, clear.',
+    weekdays_short: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
+    weather_today: 'Today',
+    weather_enable: '📍 Show weather (uses location)',
     next_due: 'Next due date',
     customer_ref_ph: 'Customer/contract no. (optional)',
     periodicity: 'Frequency',
@@ -883,11 +898,13 @@ async function renderHome(user) {
           <span class="home-hint">${t('bills_hint')}</span>
         </button>
       </div>
+      ${weatherBox()}
       <div class="home-bottom">
         <button class="btn-help-sm" onclick="renderHelp()">❓ ${t('help')}</button>
         <button class="icon-btn" onclick="renderSettings()" title="${t('settings')}">⚙️</button>
       </div>
     </div>`;
+  loadWeather();
 }
 
 function sectionShell(title, inner) {
@@ -1811,5 +1828,81 @@ async function togglePush(btn) {
   const on = await pushIsEnabled();
   const ok = on ? await disablePush() : await enablePush();
   if (ok) renderSettings();
+}
+
+
+// ===== 08-weather.js =====
+// Meteo — Open-Meteo (grátis, sem chave) com localização do aparelho
+let WEATHER_CACHE = null;
+let WEATHER_TS = 0;
+
+const WMO_EMOJI = c => {
+  if (c === 0) return '☀️';
+  if (c === 1) return '🌤️';
+  if (c === 2) return '⛅';
+  if (c === 3) return '☁️';
+  if (c === 45 || c === 48) return '🌫️';
+  if (c >= 51 && c <= 57) return '🌦️';
+  if ((c >= 61 && c <= 67) || (c >= 80 && c <= 82)) return '🌧️';
+  if ((c >= 71 && c <= 77) || c === 85 || c === 86) return '🌨️';
+  if (c >= 95) return '⛈️';
+  return '🌡️';
+};
+
+function weatherBox() {
+  return `<div id="weather-box" class="weather-box"></div>`;
+}
+
+async function loadWeather() {
+  const box = document.getElementById('weather-box');
+  if (!box || !('geolocation' in navigator)) return;
+
+  // cache de 30 min
+  if (WEATHER_CACHE && Date.now() - WEATHER_TS < 30 * 60 * 1000) {
+    renderWeather(WEATHER_CACHE);
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(async pos => {
+    try {
+      const { latitude, longitude } = pos.coords;
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}` +
+        `&current=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=7`;
+      const res = await fetch(url);
+      const data = await res.json();
+      WEATHER_CACHE = data; WEATHER_TS = Date.now();
+      renderWeather(data);
+    } catch (e) { console.error(e); }
+  }, () => {
+    // sem permissão: botão discreto para pedir
+    box.innerHTML = `<button class="btn-help-sm" style="width:100%" onclick="loadWeatherForce()">${t('weather_enable')}</button>`;
+  }, { maximumAge: 600000, timeout: 8000 });
+}
+
+function loadWeatherForce() {
+  WEATHER_CACHE = null;
+  loadWeather();
+}
+
+function renderWeather(d) {
+  const box = document.getElementById('weather-box');
+  if (!box || !d || !d.current) return;
+  const wd = t('weekdays_short');
+  const days = (d.daily && d.daily.time ? d.daily.time : []).map((iso, i) => {
+    const date = new Date(iso + 'T00:00:00');
+    return `<div class="wday">
+      <span class="wday-name">${i === 0 ? t('weather_today') : wd[date.getDay()]}</span>
+      <span class="wday-icon">${WMO_EMOJI(d.daily.weather_code[i])}</span>
+      <span class="wday-max">${Math.round(d.daily.temperature_2m_max[i])}°</span>
+      <span class="wday-min">${Math.round(d.daily.temperature_2m_min[i])}°</span>
+    </div>`;
+  }).join('');
+
+  box.innerHTML = `
+    <div class="weather-now">
+      <span class="wnow-icon">${WMO_EMOJI(d.current.weather_code)}</span>
+      <span class="wnow-temp">${Math.round(d.current.temperature_2m)}°C</span>
+    </div>
+    <div class="weather-week">${days}</div>`;
 }
 

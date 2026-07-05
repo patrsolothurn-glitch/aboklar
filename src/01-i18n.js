@@ -2,6 +2,9 @@
 const I18N = {
   pt: {
     tagline: 'Subscrições e faturas, claro.',
+    weekdays_short: ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
+    weather_today: 'Hoje',
+    weather_enable: '📍 Mostrar o tempo (usa a localização)',
     next_due: 'Próximo vencimento',
     customer_ref_ph: 'Nº de cliente/contrato (opcional)',
     periodicity: 'Periodicidade',
@@ -149,6 +152,9 @@ const I18N = {
   },
   de: {
     tagline: 'Abos und Rechnungen, klar.',
+    weekdays_short: ['So','Mo','Di','Mi','Do','Fr','Sa'],
+    weather_today: 'Heute',
+    weather_enable: '📍 Wetter anzeigen (nutzt den Standort)',
     next_due: 'Nächste Fälligkeit',
     customer_ref_ph: 'Kunden-/Vertragsnummer (optional)',
     periodicity: 'Periodizität',
@@ -296,6 +302,9 @@ const I18N = {
   },
   fr: {
     tagline: 'Abonnements et factures, clairement.',
+    weekdays_short: ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'],
+    weather_today: "Aujourd'hui",
+    weather_enable: '📍 Afficher la météo (utilise la position)',
     next_due: 'Prochaine échéance',
     customer_ref_ph: 'Nº client/contrat (optionnel)',
     periodicity: 'Périodicité',
@@ -443,6 +452,9 @@ const I18N = {
   },
   it: {
     tagline: 'Abbonamenti e fatture, chiaro.',
+    weekdays_short: ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'],
+    weather_today: 'Oggi',
+    weather_enable: '📍 Mostra il meteo (usa la posizione)',
     next_due: 'Prossima scadenza',
     customer_ref_ph: 'Nº cliente/contratto (opzionale)',
     periodicity: 'Periodicità',
@@ -590,6 +602,9 @@ const I18N = {
   },
   en: {
     tagline: 'Subscriptions and bills, clear.',
+    weekdays_short: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
+    weather_today: 'Today',
+    weather_enable: '📍 Show weather (uses location)',
     next_due: 'Next due date',
     customer_ref_ph: 'Customer/contract no. (optional)',
     periodicity: 'Frequency',
