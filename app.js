@@ -1,4 +1,4 @@
-// AboKlar — build 3 — 2026-07-05T07:28:05.680Z
+// AboKlar — build 4 — 2026-07-05T07:29:10.566Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -57,7 +57,10 @@ async function doRegister(name, email, pw) {
   const { data, error } = await sb.auth.signUp({
     email,
     password: pw,
-    options: { data: { display_name: name } }
+    options: {
+      data: { display_name: name },
+      emailRedirectTo: 'https://patrsolothurn-glitch.github.io/aboklar/'
+    }
   });
   if (error) {
     if (/already/i.test(error.message)) throw new Error(t('err_exists'));

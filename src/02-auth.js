@@ -11,7 +11,10 @@ async function doRegister(name, email, pw) {
   const { data, error } = await sb.auth.signUp({
     email,
     password: pw,
-    options: { data: { display_name: name } }
+    options: {
+      data: { display_name: name },
+      emailRedirectTo: 'https://patrsolothurn-glitch.github.io/aboklar/'
+    }
   });
   if (error) {
     if (/already/i.test(error.message)) throw new Error(t('err_exists'));
