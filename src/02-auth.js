@@ -13,7 +13,7 @@ async function doRegister(name, email, pw) {
     password: pw,
     options: {
       data: { display_name: name },
-      emailRedirectTo: 'https://patrsolothurn-glitch.github.io/aboklar/'
+      emailRedirectTo: 'https://aboklar.ch/'
     }
   });
   if (error) {
@@ -28,7 +28,7 @@ async function doRegister(name, email, pw) {
 
 async function doReset(email) {
   await sb.auth.resetPasswordForEmail(email, {
-    redirectTo: 'https://patrsolothurn-glitch.github.io/aboklar/'
+    redirectTo: 'https://aboklar.ch/'
   });
 }
 
