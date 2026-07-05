@@ -104,6 +104,16 @@
     border:1.5px dashed var(--border); border-radius:12px; padding:10px 16px;
   }
   .weather-box { margin-top:16px; }
+  .weather-place {
+    display:block; margin:0 auto 6px; background:none; border:none;
+    color:var(--muted); font-size:13.5px; font-weight:600; padding:6px 10px;
+  }
+  .wday { background:none; border:none; color:var(--ink); padding:0; }
+  .city-opt {
+    display:block; width:100%; text-align:left; background:var(--input-bg);
+    border:1.5px solid var(--border); border-radius:12px; padding:12px 14px;
+    color:var(--ink); font-size:14.5px; margin-bottom:8px;
+  }
   .weather-now {
     display:flex; align-items:center; justify-content:center; gap:10px;
     margin-bottom:10px;
@@ -233,9 +243,9 @@
   .confirm-box p { margin:6px 0; font-size:15px; }
 </style>
 </head>
-<body data-build="28">
+<body data-build="29">
   <div id="app"><p style="color:var(--muted)">A carregar…</p></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="app.js?v=28"></script>
+  <script src="app.js?v=29"></script>
 </body>
 </html>
