@@ -1,4 +1,4 @@
-// AboKlar — build 10 — 2026-07-05T08:17:06.169Z
+// AboKlar — build 11 — 2026-07-05T08:25:26.930Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -78,6 +78,26 @@ const I18N = {
     next_renewal: 'Renova dia',
     err_amount: 'Valor inválido.',
     err_day: 'Dia inválido (1–31).',
+    bills_tab: 'Faturas',
+    archive_tab: '📦 Arquivo',
+    bill_name_ph: 'Nome (ex: Eletricidade)',
+    ref_amount_ph: 'Valor de referência',
+    limit_ph: 'Limite (opcional)',
+    due_day: 'Dia do mês (aprox.)',
+    mark_paid: '✓ Pago',
+    paid_badge: 'Pago',
+    pending: 'Pendente',
+    no_bills: 'Ainda não tens faturas. Toca em + Nova para começar.',
+    no_payments: 'Sem pagamentos neste mês.',
+    month_total: 'Total do mês',
+    over_limit: 'acima do limite',
+    confirm_paid_title: 'Confirmar pagamento',
+    paid_on: 'Pago a',
+    locked_hint: 'Bloqueado 🔒 — prime longo para editar',
+    edit_payment: 'Corrigir valor',
+    delete_payment: 'Apagar pagamento',
+    limit_lbl: 'Limite',
+    ref_lbl: 'Referência',
     help: 'Ajuda',
     help_intro: 'Como funciona o AboKlar, passo a passo.',
     help_subs_title: '📋 Subscrições',
@@ -266,10 +286,6 @@ function sectionShell(title, inner) {
       </header>
       ${inner}
     </div>`;
-}
-
-function renderBills() {
-  sectionShell(t('bills'), `<p class="muted" style="margin-top:40px">${t('section_soon')}</p>`);
 }
 
 function helpSection(title, steps, open) {
@@ -600,5 +616,391 @@ async function deleteSub(id) {
   if (error) { console.error(error); alert(t('err_generic')); return; }
   document.querySelectorAll('.modal-bg').forEach(m => m.remove());
   renderSubs();
+}
+
+
+// ===== 05-bills.js =====
+// Faturas — CRUD + ✓ Pago + arquivo mensal + limite + bloqueio 5 dias úteis
+let BILLS_CACHE = [];
+let PAYMENTS_CACHE = [];
+let BILLS_TAB = 'bills'; // 'bills' | 'archive'
+let ARCH_PERIOD = null;  // 'YYYY-MM'
+const MONTHS_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+function curPeriod() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function periodLabel(p) {
+  const [y, m] = p.split('-');
+  return `${MONTHS_PT[parseInt(m, 10) - 1]} ${y}`;
+}
+
+function shiftPeriod(p, delta) {
+  let [y, m] = p.split('-').map(Number);
+  m += delta;
+  while (m < 1) { m += 12; y--; }
+  while (m > 12) { m -= 12; y++; }
+  return `${y}-${String(m).padStart(2, '0')}`;
+}
+
+function businessDaysSince(iso) {
+  const start = new Date(iso.slice(0, 10) + 'T00:00:00');
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  let count = 0;
+  const d = new Date(start);
+  while (d < today) {
+    d.setDate(d.getDate() + 1);
+    const wd = d.getDay();
+    if (wd !== 0 && wd !== 6) count++;
+  }
+  return count;
+}
+
+async function loadBills() {
+  const { data, error } = await sb.from('bills').select('*').order('due_day');
+  if (error) { console.error(error); return []; }
+  BILLS_CACHE = data || [];
+  return BILLS_CACHE;
+}
+
+async function loadPayments(period) {
+  const { data, error } = await sb.from('bill_payments').select('*').eq('period', period);
+  if (error) { console.error(error); return []; }
+  PAYMENTS_CACHE = data || [];
+  return PAYMENTS_CACHE;
+}
+
+function setBillsTab(tab) { BILLS_TAB = tab; renderBills(); }
+function shiftArch(delta) { ARCH_PERIOD = shiftPeriod(ARCH_PERIOD, delta); renderBills(); }
+
+async function renderBills() {
+  if (!ARCH_PERIOD) ARCH_PERIOD = curPeriod();
+  await loadBills();
+
+  const tabs = `
+    <div class="seg" style="margin-bottom:14px">
+      <button class="seg-btn${BILLS_TAB === 'bills' ? ' on' : ''}" onclick="setBillsTab('bills')">${t('bills_tab')}</button>
+      <button class="seg-btn${BILLS_TAB === 'archive' ? ' on' : ''}" onclick="setBillsTab('archive')">${t('archive_tab')}</button>
+    </div>`;
+
+  if (BILLS_TAB === 'bills') {
+    const period = curPeriod();
+    const pays = await loadPayments(period);
+    const paidBy = {};
+    for (const p of pays) paidBy[p.bill_id] = p;
+
+    const list = BILLS_CACHE.length
+      ? BILLS_CACHE.map(b => {
+          const pay = paidBy[b.id];
+          const meta2 = [b.payment_method, b.bank, b.card_last4 ? '••••' + b.card_last4 : null].filter(Boolean).join(' · ');
+          return `
+        <div class="row-card sub-row${b.active ? '' : ' off'}" onclick="renderBillDetail('${b.id}')">
+          <div class="sub-icon-wrap">${subIcon(b)}</div>
+          <div class="row-main">
+            <span class="row-name"><span class="dot ${b.active ? 'dot-on' : 'dot-off'}"></span>${b.name} ${flagEmoji(b.country)}</span>
+            <span class="row-cat">${[b.category, b.due_day ? t('due_day').split(' ')[0] + ' ' + b.due_day : null].filter(Boolean).join(' · ')}</span>
+            ${meta2 ? `<span class="row-cat">${meta2}</span>` : ''}
+          </div>
+          <div class="row-side">
+            <span class="row-amount">${fmtMoney(pay ? pay.amount : b.reference_amount, b.currency)}</span>
+            ${pay
+              ? `<span class="paid-badge">✓ ${t('paid_badge')}</span>`
+              : (b.active ? `<button class="btn-paid" onclick="event.stopPropagation();openPaidModal('${b.id}')">${t('mark_paid')}</button>` : '')}
+          </div>
+        </div>`;
+        }).join('')
+      : `<p class="muted" style="margin-top:30px">${t('no_bills')}</p>`;
+
+    sectionShell(t('bills'), `
+      ${tabs}
+      <button class="btn-primary" style="width:100%;margin-bottom:14px" onclick="renderBillForm()">${t('new')}</button>
+      <div class="rows">${list}</div>
+    `);
+  } else {
+    const pays = await loadPayments(ARCH_PERIOD);
+    const billById = {};
+    for (const b of BILLS_CACHE) billById[b.id] = b;
+
+    const totals = {};
+    for (const p of pays) {
+      const b = billById[p.bill_id];
+      const cur = (b && b.currency) || 'CHF';
+      totals[cur] = (totals[cur] || 0) + Number(p.amount);
+    }
+
+    const list = pays.length
+      ? pays.map(p => {
+          const b = billById[p.bill_id] || { name: '?', currency: 'CHF' };
+          const over = b.limit_amount && Number(p.amount) > Number(b.limit_amount);
+          const bd = businessDaysSince(p.paid_at);
+          const locked = bd > 5;
+          return `
+        <div class="row-card pay-row" data-pid="${p.id}" data-locked="${locked ? '1' : '0'}"
+             onclick="payTap('${p.id}', ${locked})">
+          <div class="row-main">
+            <span class="row-name">${b.name} ${locked ? '🔒' : ''}</span>
+            <span class="row-cat">${t('paid_on')} ${fmtDate(p.paid_at)}</span>
+            ${over ? `<span class="row-cat over">⚠️ ${t('over_limit')} (${fmtMoney(b.limit_amount, b.currency)})</span>` : ''}
+          </div>
+          <span class="row-amount${over ? ' over' : ''}">${fmtMoney(p.amount, b.currency)}</span>
+        </div>`;
+        }).join('')
+      : `<p class="muted" style="margin-top:30px">${t('no_payments')}</p>`;
+
+    sectionShell(t('bills'), `
+      ${tabs}
+      <div class="arch-nav">
+        <button class="icon-btn" onclick="shiftArch(-1)">‹</button>
+        <span class="arch-title">${periodLabel(ARCH_PERIOD)}</span>
+        <button class="icon-btn" onclick="shiftArch(1)">›</button>
+      </div>
+      ${Object.keys(totals).length ? `
+        <div class="total-card" style="margin-bottom:14px">
+          <span class="total-label">${t('month_total')}</span>
+          ${Object.entries(totals).map(([c, v]) => `<span class="total-val">${fmtMoney(v, c)}</span>`).join('')}
+        </div>` : ''}
+      <div class="rows">${list}</div>
+    `);
+    setupLongPress();
+  }
+}
+
+// ---- premir longo para desbloquear ----
+let LP_TIMER = null;
+let LP_FIRED = false;
+
+function setupLongPress() {
+  document.querySelectorAll('.pay-row[data-locked="1"]').forEach(el => {
+    el.addEventListener('pointerdown', () => {
+      LP_FIRED = false;
+      LP_TIMER = setTimeout(() => {
+        LP_FIRED = true;
+        openPaymentEdit(el.getAttribute('data-pid'), true);
+      }, 600);
+    });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev =>
+      el.addEventListener(ev, () => clearTimeout(LP_TIMER)));
+  });
+}
+
+function payTap(pid, locked) {
+  if (LP_FIRED) { LP_FIRED = false; return; }
+  if (locked) { showToast(t('locked_hint')); return; }
+  openPaymentEdit(pid, false);
+}
+
+function showToast(msg) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2200);
+}
+
+// ---- ✓ Pago ----
+async function openPaidModal(billId) {
+  const b = BILLS_CACHE.find(x => x.id === billId);
+  if (!b) return;
+  // último valor pago desta fatura
+  const { data } = await sb.from('bill_payments')
+    .select('amount').eq('bill_id', billId)
+    .order('period', { ascending: false }).limit(1);
+  const prefill = (data && data.length) ? data[0].amount : b.reference_amount;
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-bg';
+  modal.innerHTML = `
+    <div class="modal">
+      <div class="modal-title" style="margin-bottom:4px">${t('confirm_paid_title')}</div>
+      <div class="modal-sub" style="margin-bottom:14px">${b.name} · ${periodLabel(curPeriod())}</div>
+      <div class="form">
+        <div class="form-row">
+          <input id="pay-amount" type="number" step="0.01" inputmode="decimal" value="${prefill}">
+          <span style="align-self:center;font-weight:700">${b.currency}</span>
+        </div>
+        ${b.limit_amount ? `<p class="muted" style="text-align:left;font-size:13px">${t('limit_lbl')}: ${fmtMoney(b.limit_amount, b.currency)}</p>` : ''}
+        <button class="btn-primary" onclick="confirmPaid('${b.id}')">${t('mark_paid')}</button>
+        <button class="btn-secondary" onclick="this.closest('.modal-bg').remove()">${t('cancel')}</button>
+      </div>
+    </div>`;
+  modal.onclick = e => { if (e.target === modal) modal.remove(); };
+  document.body.appendChild(modal);
+}
+
+async function confirmPaid(billId) {
+  const amount = parseFloat(document.getElementById('pay-amount').value);
+  if (!amount || amount <= 0) return;
+  const { data: { user } } = await sb.auth.getUser();
+  const { error } = await sb.from('bill_payments').insert({
+    bill_id: billId, user_id: user.id, period: curPeriod(), amount
+  });
+  if (error) { console.error(error); alert(t('err_generic')); return; }
+  document.querySelectorAll('.modal-bg').forEach(m => m.remove());
+  renderBills();
+}
+
+// ---- editar/apagar pagamento no arquivo ----
+function openPaymentEdit(pid, unlocked) {
+  const p = PAYMENTS_CACHE.find(x => x.id === pid);
+  if (!p) return;
+  const b = BILLS_CACHE.find(x => x.id === p.bill_id) || { name: '?', currency: 'CHF' };
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-bg';
+  modal.innerHTML = `
+    <div class="modal">
+      <div class="modal-title" style="margin-bottom:4px">${t('edit_payment')} ${unlocked ? '🔓' : ''}</div>
+      <div class="modal-sub" style="margin-bottom:14px">${b.name} · ${periodLabel(p.period)}</div>
+      <div class="form">
+        <div class="form-row">
+          <input id="pay-amount" type="number" step="0.01" inputmode="decimal" value="${p.amount}">
+          <span style="align-self:center;font-weight:700">${b.currency}</span>
+        </div>
+        <button class="btn-primary" onclick="savePaymentEdit('${p.id}')">${t('save')}</button>
+        <button class="btn-danger" onclick="deletePayment('${p.id}')">${t('delete_payment')} 🗑️</button>
+        <button class="btn-secondary" onclick="this.closest('.modal-bg').remove()">${t('cancel')}</button>
+      </div>
+    </div>`;
+  modal.onclick = e => { if (e.target === modal) modal.remove(); };
+  document.body.appendChild(modal);
+}
+
+async function savePaymentEdit(pid) {
+  const amount = parseFloat(document.getElementById('pay-amount').value);
+  if (!amount || amount <= 0) return;
+  const { error } = await sb.from('bill_payments').update({ amount }).eq('id', pid);
+  if (error) { console.error(error); alert(t('err_generic')); return; }
+  document.querySelectorAll('.modal-bg').forEach(m => m.remove());
+  renderBills();
+}
+
+async function deletePayment(pid) {
+  if (!confirm(t('delete_confirm'))) return;
+  const { error } = await sb.from('bill_payments').delete().eq('id', pid);
+  if (error) { console.error(error); alert(t('err_generic')); return; }
+  document.querySelectorAll('.modal-bg').forEach(m => m.remove());
+  renderBills();
+}
+
+// ---- detalhe da fatura ----
+function renderBillDetail(id) {
+  const b = BILLS_CACHE.find(x => x.id === id);
+  if (!b) return;
+  const rows = [
+    [t('category'), b.category],
+    [t('ref_lbl'), fmtMoney(b.reference_amount, b.currency)],
+    [t('limit_lbl'), b.limit_amount ? fmtMoney(b.limit_amount, b.currency) : null],
+    [t('due_day'), b.due_day],
+    [t('method'), b.payment_method],
+    [t('bank'), b.bank],
+    [t('card'), b.card_last4 ? '•••• ' + b.card_last4 : null],
+    [t('country'), b.country ? `${flagEmoji(b.country)} ${b.country}` : null],
+    [t('status'), b.active ? t('active_lbl') : t('inactive_lbl')]
+  ].filter(r => r[1]);
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-bg';
+  modal.innerHTML = `
+    <div class="modal">
+      <div class="modal-head">
+        <div class="sub-icon-wrap big">${subIcon(b)}</div>
+        <div>
+          <div class="modal-title">${b.name} ${flagEmoji(b.country)}</div>
+          <div class="modal-sub">${fmtMoney(b.reference_amount, b.currency)}</div>
+        </div>
+      </div>
+      ${rows.map(r => `<div class="detail-row"><span>${r[0]}</span><b>${r[1]}</b></div>`).join('')}
+      <button class="btn-secondary" style="margin-top:14px" onclick="toggleBillActive('${b.id}', ${!b.active})">${b.active ? t('deactivate') + ' ⏸' : t('activate') + ' ▶️'}</button>
+      <div class="modal-btns">
+        <button class="btn-primary" onclick="this.closest('.modal-bg').remove();renderBillForm('${b.id}')">${t('edit')} ✏️</button>
+        <button class="btn-secondary" onclick="this.closest('.modal-bg').remove()">${t('close')}</button>
+      </div>
+    </div>`;
+  modal.onclick = e => { if (e.target === modal) modal.remove(); };
+  document.body.appendChild(modal);
+}
+
+async function toggleBillActive(id, val) {
+  const { error } = await sb.from('bills').update({ active: val }).eq('id', id);
+  if (error) { console.error(error); alert(t('err_generic')); return; }
+  document.querySelectorAll('.modal-bg').forEach(m => m.remove());
+  renderBills();
+}
+
+// ---- formulário fatura ----
+function renderBillForm(id) {
+  const b = id ? BILLS_CACHE.find(x => x.id === id) : null;
+  const isEdit = !!b;
+  const cur = (b && b.currency) || 'CHF';
+  const esc = v => (v || '').replace(/"/g, '&quot;');
+
+  sectionShell(isEdit ? t('edit') : t('new'), `
+    <div class="form">
+      <input id="b-name" type="text" placeholder="${t('bill_name_ph')}" value="${esc(b && b.name)}">
+      <input id="b-website" type="text" placeholder="${t('website_ph')}" value="${esc(b && b.website)}">
+      <input id="b-cat" type="text" placeholder="${t('category_ph')}" value="${esc(b && b.category)}">
+      <div class="form-row">
+        <input id="b-amount" type="number" step="0.01" inputmode="decimal" placeholder="${t('ref_amount_ph')}" value="${b ? b.reference_amount : ''}">
+        <select id="b-cur">${CURRENCIES.map(c => `<option value="${c}"${c === cur ? ' selected' : ''}>${c}</option>`).join('')}</select>
+      </div>
+      <input id="b-limit" type="number" step="0.01" inputmode="decimal" placeholder="${t('limit_ph')}" value="${b && b.limit_amount ? b.limit_amount : ''}">
+      <label class="lbl">${t('due_day')}</label>
+      <input id="b-day" type="number" min="1" max="31" inputmode="numeric" value="${b && b.due_day ? b.due_day : ''}">
+      <div class="form-row">
+        <select id="b-method"><option value="">${t('method')}…</option>${PAY_METHODS.map(m => `<option value="${m}"${b && b.payment_method === m ? ' selected' : ''}>${m}</option>`).join('')}</select>
+        <select id="b-country"><option value="">${t('country')}…</option>${COUNTRIES.map(c => `<option value="${c}"${b && b.country === c ? ' selected' : ''}>${flagEmoji(c)} ${c}</option>`).join('')}</select>
+      </div>
+      <input id="b-bank" type="text" placeholder="${t('bank_ph')}" value="${esc(b && b.bank)}">
+      <input id="b-card" type="text" inputmode="numeric" maxlength="4" placeholder="${t('card_ph')}" value="${esc(b && b.card_last4)}">
+      <div id="b-err"></div>
+      <button class="btn-primary" onclick="saveBill(${isEdit ? `'${b.id}'` : 'null'})">${t('save')}</button>
+      <button class="btn-secondary" onclick="renderBills()">${t('cancel')}</button>
+      ${isEdit ? `<button class="btn-danger" onclick="deleteBill('${b.id}')">${t('delete')} 🗑️</button>` : ''}
+    </div>
+  `);
+}
+
+async function saveBill(id) {
+  const g = i => document.getElementById(i);
+  const name = g('b-name').value.trim();
+  const amount = parseFloat(g('b-amount').value);
+  const limit = parseFloat(g('b-limit').value);
+  const day = parseInt(g('b-day').value, 10);
+  const errEl = g('b-err');
+
+  if (!name) { errEl.innerHTML = `<div class="err">${t('err_fill')}</div>`; return; }
+  if (!amount || amount <= 0) { errEl.innerHTML = `<div class="err">${t('err_amount')}</div>`; return; }
+  if (day && (day < 1 || day > 31)) { errEl.innerHTML = `<div class="err">${t('err_day')}</div>`; return; }
+
+  const { data: { user } } = await sb.auth.getUser();
+  const row = {
+    user_id: user.id, name,
+    website: g('b-website').value.trim() || null,
+    category: g('b-cat').value.trim() || null,
+    reference_amount: amount,
+    limit_amount: limit > 0 ? limit : null,
+    currency: g('b-cur').value,
+    due_day: day || null,
+    payment_method: g('b-method').value || null,
+    country: g('b-country').value || null,
+    bank: g('b-bank').value.trim() || null,
+    card_last4: g('b-card').value.trim() || null
+  };
+
+  let error;
+  if (id) ({ error } = await sb.from('bills').update(row).eq('id', id));
+  else ({ error } = await sb.from('bills').insert(row));
+  if (error) { console.error(error); errEl.innerHTML = `<div class="err">${t('err_generic')}</div>`; return; }
+  renderBills();
+}
+
+async function deleteBill(id) {
+  if (!confirm(t('delete_confirm'))) return;
+  const { error } = await sb.from('bills').delete().eq('id', id);
+  if (error) { console.error(error); alert(t('err_generic')); return; }
+  document.querySelectorAll('.modal-bg').forEach(m => m.remove());
+  renderBills();
 }
 

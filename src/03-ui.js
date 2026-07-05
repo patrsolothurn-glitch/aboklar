@@ -108,10 +108,6 @@ function sectionShell(title, inner) {
     </div>`;
 }
 
-function renderBills() {
-  sectionShell(t('bills'), `<p class="muted" style="margin-top:40px">${t('section_soon')}</p>`);
-}
-
 function helpSection(title, steps, open) {
   const items = steps.map((st, i) => `<li>${st}</li>`).join('');
   return `<details class="help-sec"${open ? ' open' : ''}>
