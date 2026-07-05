@@ -69,6 +69,7 @@ function renderAuth(view, ctx = {}) {
 }
 
 async function renderHome(user) {
+  localStorage.setItem('aboklar_last_view', 'home');
   const name = (user.user_metadata && user.user_metadata.display_name) || user.email;
   $app().innerHTML = `
     <div class="page home-page">
@@ -102,7 +103,7 @@ function sectionShell(title, inner) {
   $app().innerHTML = `
     <div class="page">
       <header class="topbar">
-        <button class="icon-btn" onclick="boot()">←</button>
+        <button class="icon-btn" onclick="boot(true)">←</button>
         <span class="topbar-name">${title}</span>
         <span style="width:40px"></span>
       </header>
@@ -160,11 +161,14 @@ async function uiReset() {
 }
 
 // ---- arranque ----
-async function boot() {
+async function boot(forceHome) {
   const { data: { session } } = await sb.auth.getSession();
   if (session && session.user) {
     await loadProfile();
-    renderHome(session.user);
+    const last = forceHome ? 'home' : localStorage.getItem('aboklar_last_view');
+    if (last === 'subs') renderSubs();
+    else if (last === 'bills') renderBills();
+    else renderHome(session.user);
   } else renderAuth('login');
 }
 document.addEventListener('DOMContentLoaded', () => {

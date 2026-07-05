@@ -76,6 +76,7 @@ function setBillsTab(tab) { BILLS_TAB = tab; renderBills(); }
 function shiftArch(delta) { ARCH_PERIOD = shiftPeriod(ARCH_PERIOD, delta); renderBills(); }
 
 async function renderBills() {
+  localStorage.setItem('aboklar_last_view', 'bills');
   if (!ARCH_PERIOD) ARCH_PERIOD = curPeriod();
   await loadBills();
 

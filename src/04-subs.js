@@ -93,6 +93,7 @@ function subsTotals(subs) {
 function setSubsSort(mode) { SUBS_SORT = mode; renderSubs(); }
 
 async function renderSubs() {
+  localStorage.setItem('aboklar_last_view', 'subs');
   const subs = await loadSubs();
   const totals = subsTotals(subs);
 

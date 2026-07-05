@@ -1,4 +1,4 @@
-// AboKlar — build 24 — 2026-07-05T11:39:57.109Z
+// AboKlar — build 25 — 2026-07-05T11:48:17.697Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -878,6 +878,7 @@ function renderAuth(view, ctx = {}) {
 }
 
 async function renderHome(user) {
+  localStorage.setItem('aboklar_last_view', 'home');
   const name = (user.user_metadata && user.user_metadata.display_name) || user.email;
   $app().innerHTML = `
     <div class="page home-page">
@@ -911,7 +912,7 @@ function sectionShell(title, inner) {
   $app().innerHTML = `
     <div class="page">
       <header class="topbar">
-        <button class="icon-btn" onclick="boot()">←</button>
+        <button class="icon-btn" onclick="boot(true)">←</button>
         <span class="topbar-name">${title}</span>
         <span style="width:40px"></span>
       </header>
@@ -969,11 +970,14 @@ async function uiReset() {
 }
 
 // ---- arranque ----
-async function boot() {
+async function boot(forceHome) {
   const { data: { session } } = await sb.auth.getSession();
   if (session && session.user) {
     await loadProfile();
-    renderHome(session.user);
+    const last = forceHome ? 'home' : localStorage.getItem('aboklar_last_view');
+    if (last === 'subs') renderSubs();
+    else if (last === 'bills') renderBills();
+    else renderHome(session.user);
   } else renderAuth('login');
 }
 document.addEventListener('DOMContentLoaded', () => {
@@ -1078,6 +1082,7 @@ function subsTotals(subs) {
 function setSubsSort(mode) { SUBS_SORT = mode; renderSubs(); }
 
 async function renderSubs() {
+  localStorage.setItem('aboklar_last_view', 'subs');
   const subs = await loadSubs();
   const totals = subsTotals(subs);
 
@@ -1346,6 +1351,7 @@ function setBillsTab(tab) { BILLS_TAB = tab; renderBills(); }
 function shiftArch(delta) { ARCH_PERIOD = shiftPeriod(ARCH_PERIOD, delta); renderBills(); }
 
 async function renderBills() {
+  localStorage.setItem('aboklar_last_view', 'bills');
   if (!ARCH_PERIOD) ARCH_PERIOD = curPeriod();
   await loadBills();
 
