@@ -1,4 +1,4 @@
-// AboKlar — build 9 — 2026-07-05T08:15:03.236Z
+// AboKlar — build 10 — 2026-07-05T08:17:06.169Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -345,6 +345,11 @@ let SUBS_CACHE = [];
 let SUBS_SORT = 'date';
 
 function fmtMoney(v, cur) { return `${Number(v).toFixed(2)} ${cur}`; }
+function fmtDate(iso) {
+  if (!iso) return '';
+  const [y, m, d] = iso.slice(0, 10).split('-');
+  return `${d}.${m}.${y}`;
+}
 
 function flagEmoji(cc) {
   if (!cc || cc.length !== 2) return '';
@@ -443,7 +448,7 @@ async function renderSubs() {
           <span class="row-name"><span class="dot ${s.active ? 'dot-on' : 'dot-off'}"></span>${s.name} ${flagEmoji(s.country)}</span>
           <span class="row-cat">${[s.category, s.billing_cycle === 'yearly' ? t('yearly') : t('monthly')].filter(Boolean).join(' · ')}</span>
           ${meta2 ? `<span class="row-cat">${meta2}</span>` : ''}
-          ${nr ? `<span class="row-cat">${nr.date} (${t('in_days')} ${nr.days}d)</span>` : ''}
+          ${nr ? `<span class="row-cat">${fmtDate(nr.date)} (${t('in_days')} ${nr.days}d)</span>` : ''}
         </div>
         <div class="row-side">
           <span class="row-amount">${fmtMoney(s.amount, s.currency)}</span>
@@ -479,7 +484,7 @@ function renderSubDetail(id) {
     [t('bank'), s.bank],
     [t('card'), s.card_last4 ? '•••• ' + s.card_last4 : null],
     [t('country'), s.country ? `${flagEmoji(s.country)} ${s.country}` : null],
-    [t('next_charge'), nr ? `${nr.date} (${t('in_days')} ${nr.days}d)` : null],
+    [t('next_charge'), nr ? `${fmtDate(nr.date)} (${t('in_days')} ${nr.days}d)` : null],
     [t('status'), s.active ? t('active_lbl') : t('inactive_lbl')]
   ].filter(r => r[1]);
 
