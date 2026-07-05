@@ -92,6 +92,7 @@ async function renderHome(user) {
           <span class="home-hint">${t('bills_hint')}</span>
         </button>
       </div>
+      <button class="btn-help" onclick="renderHelp()">❓ ${t('help')}</button>
     </div>`;
 }
 
@@ -113,6 +114,23 @@ function renderSubs() {
 
 function renderBills() {
   sectionShell(t('bills'), `<p class="muted" style="margin-top:40px">${t('section_soon')}</p>`);
+}
+
+function helpSection(title, steps, open) {
+  const items = steps.map((st, i) => `<li>${st}</li>`).join('');
+  return `<details class="help-sec"${open ? ' open' : ''}>
+    <summary>${title}</summary>
+    <ol class="help-steps">${items}</ol>
+  </details>`;
+}
+
+function renderHelp() {
+  sectionShell(t('help'), `
+    <p class="muted" style="text-align:left;margin-bottom:16px">${t('help_intro')}</p>
+    ${helpSection(t('help_subs_title'), t('help_subs_steps'), true)}
+    ${helpSection(t('help_bills_title'), t('help_bills_steps'), false)}
+    ${helpSection(t('help_general_title'), t('help_general_steps'), false)}
+  `);
 }
 
 function renderSettings() {
