@@ -79,7 +79,7 @@ async function renderBills() {
           <div class="sub-icon-wrap">${subIcon(b)}</div>
           <div class="row-main">
             <span class="row-name"><span class="dot ${b.active ? 'dot-on' : 'dot-off'}"></span>${b.name} ${flagEmoji(b.country)}</span>
-            <span class="row-cat">${[b.category, b.due_day ? t('due_day').split(' ')[0] + ' ' + b.due_day : null].filter(Boolean).join(' · ')}</span>
+            <span class="row-cat">${[b.category, b.periodicity && b.periodicity !== 'monthly' ? ({quarterly:t('per_quarterly'),halfyear:t('per_halfyear'),yearly:t('yearly')})[b.periodicity] : null, b.due_day ? t('due_day').split(' ')[0] + ' ' + b.due_day : null].filter(Boolean).join(' · ')}</span>
             ${meta2 ? `<span class="row-cat">${meta2}</span>` : ''}
           </div>
           <div class="row-side">
@@ -267,8 +267,11 @@ async function deletePayment(pid) {
 function renderBillDetail(id) {
   const b = BILLS_CACHE.find(x => x.id === id);
   if (!b) return;
+  const perLbl = { monthly: t('monthly'), quarterly: t('per_quarterly'), halfyear: t('per_halfyear'), yearly: t('yearly') };
   const rows = [
     [t('category'), b.category],
+    [t('customer_ref_lbl'), b.customer_ref],
+    [t('periodicity'), perLbl[b.periodicity || 'monthly']],
     [t('ref_lbl'), fmtMoney(b.reference_amount, b.currency)],
     [t('limit_lbl'), b.limit_amount ? fmtMoney(b.limit_amount, b.currency) : null],
     [t('due_day'), b.due_day],
@@ -276,6 +279,7 @@ function renderBillDetail(id) {
     [t('bank'), b.bank],
     [t('card'), b.card_last4 ? '•••• ' + b.card_last4 : null],
     [t('country'), b.country ? `${flagEmoji(b.country)} ${b.country}` : null],
+    [t('notes_lbl'), b.notes],
     [t('status'), b.active ? t('active_lbl') : t('inactive_lbl')]
   ].filter(r => r[1]);
 
@@ -325,6 +329,14 @@ function renderBillForm(id) {
         <select id="b-cur">${CURRENCIES.map(c => `<option value="${c}"${c === cur ? ' selected' : ''}>${c}</option>`).join('')}</select>
       </div>
       <input id="b-limit" type="number" step="0.01" inputmode="decimal" placeholder="${t('limit_ph')}" value="${b && b.limit_amount ? b.limit_amount : ''}">
+      <input id="b-ref" type="text" placeholder="${t('customer_ref_ph')}" value="${esc(b && b.customer_ref)}">
+      <label class="lbl">${t('periodicity')}</label>
+      <select id="b-per">
+        <option value="monthly"${!b || b.periodicity === 'monthly' || !b.periodicity ? ' selected' : ''}>${t('monthly')}</option>
+        <option value="quarterly"${b && b.periodicity === 'quarterly' ? ' selected' : ''}>${t('per_quarterly')}</option>
+        <option value="halfyear"${b && b.periodicity === 'halfyear' ? ' selected' : ''}>${t('per_halfyear')}</option>
+        <option value="yearly"${b && b.periodicity === 'yearly' ? ' selected' : ''}>${t('yearly')}</option>
+      </select>
       <label class="lbl">${t('due_day')}</label>
       <input id="b-day" type="number" min="1" max="31" inputmode="numeric" value="${b && b.due_day ? b.due_day : ''}">
       <div class="form-row">
@@ -333,6 +345,7 @@ function renderBillForm(id) {
       </div>
       <input id="b-bank" type="text" placeholder="${t('bank_ph')}" value="${esc(b && b.bank)}">
       <input id="b-card" type="text" inputmode="numeric" maxlength="4" placeholder="${t('card_ph')}" value="${esc(b && b.card_last4)}">
+      <input id="b-notes" type="text" placeholder="${t('notes_ph')}" value="${esc(b && b.notes)}">
       <div id="b-err"></div>
       <button class="btn-primary" onclick="saveBill(${isEdit ? `'${b.id}'` : 'null'})">${t('save')}</button>
       <button class="btn-secondary" onclick="renderBills()">${t('cancel')}</button>
@@ -362,6 +375,9 @@ async function saveBill(id) {
     limit_amount: limit > 0 ? limit : null,
     currency: g('b-cur').value,
     due_day: day || null,
+    customer_ref: g('b-ref').value.trim() || null,
+    periodicity: g('b-per').value,
+    notes: g('b-notes').value.trim() || null,
     payment_method: g('b-method').value || null,
     country: g('b-country').value || null,
     bank: g('b-bank').value.trim() || null,

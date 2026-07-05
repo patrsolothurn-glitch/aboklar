@@ -1,4 +1,4 @@
-// AboKlar — build 15 — 2026-07-05T09:12:10.629Z
+// AboKlar — build 16 — 2026-07-05T09:58:56.461Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -12,6 +12,13 @@ const sb = window.supabase.createClient(SUPA_URL, SUPA_KEY);
 const I18N = {
   pt: {
     tagline: 'Subscrições e faturas, claro.',
+    customer_ref_ph: 'Nº de cliente/contrato (opcional)',
+    periodicity: 'Periodicidade',
+    per_quarterly: 'Trimestral',
+    per_halfyear: 'Semestral',
+    notes_ph: 'Notas (opcional)',
+    notes_lbl: 'Notas',
+    customer_ref_lbl: 'Nº cliente',
     push_lbl: 'Notificações',
     push_on_lbl: 'Ativadas neste dispositivo',
     push_off_lbl: 'Desativadas',
@@ -151,6 +158,13 @@ const I18N = {
   },
   de: {
     tagline: 'Abos und Rechnungen, klar.',
+    customer_ref_ph: 'Kunden-/Vertragsnummer (optional)',
+    periodicity: 'Periodizität',
+    per_quarterly: 'Vierteljährlich',
+    per_halfyear: 'Halbjährlich',
+    notes_ph: 'Notizen (optional)',
+    notes_lbl: 'Notizen',
+    customer_ref_lbl: 'Kundennr.',
     push_lbl: 'Benachrichtigungen',
     push_on_lbl: 'Auf diesem Gerät aktiviert',
     push_off_lbl: 'Deaktiviert',
@@ -290,6 +304,13 @@ const I18N = {
   },
   fr: {
     tagline: 'Abonnements et factures, clairement.',
+    customer_ref_ph: 'Nº client/contrat (optionnel)',
+    periodicity: 'Périodicité',
+    per_quarterly: 'Trimestriel',
+    per_halfyear: 'Semestriel',
+    notes_ph: 'Notes (optionnel)',
+    notes_lbl: 'Notes',
+    customer_ref_lbl: 'Nº client',
     push_lbl: 'Notifications',
     push_on_lbl: 'Activées sur cet appareil',
     push_off_lbl: 'Désactivées',
@@ -429,6 +450,13 @@ const I18N = {
   },
   it: {
     tagline: 'Abbonamenti e fatture, chiaro.',
+    customer_ref_ph: 'Nº cliente/contratto (opzionale)',
+    periodicity: 'Periodicità',
+    per_quarterly: 'Trimestrale',
+    per_halfyear: 'Semestrale',
+    notes_ph: 'Note (opzionale)',
+    notes_lbl: 'Note',
+    customer_ref_lbl: 'Nº cliente',
     push_lbl: 'Notifiche',
     push_on_lbl: 'Attive su questo dispositivo',
     push_off_lbl: 'Disattivate',
@@ -568,6 +596,13 @@ const I18N = {
   },
   en: {
     tagline: 'Subscriptions and bills, clear.',
+    customer_ref_ph: 'Customer/contract no. (optional)',
+    periodicity: 'Frequency',
+    per_quarterly: 'Quarterly',
+    per_halfyear: 'Half-yearly',
+    notes_ph: 'Notes (optional)',
+    notes_lbl: 'Notes',
+    customer_ref_lbl: 'Customer no.',
     push_lbl: 'Notifications',
     push_on_lbl: 'Enabled on this device',
     push_off_lbl: 'Disabled',
@@ -1274,7 +1309,7 @@ async function renderBills() {
           <div class="sub-icon-wrap">${subIcon(b)}</div>
           <div class="row-main">
             <span class="row-name"><span class="dot ${b.active ? 'dot-on' : 'dot-off'}"></span>${b.name} ${flagEmoji(b.country)}</span>
-            <span class="row-cat">${[b.category, b.due_day ? t('due_day').split(' ')[0] + ' ' + b.due_day : null].filter(Boolean).join(' · ')}</span>
+            <span class="row-cat">${[b.category, b.periodicity && b.periodicity !== 'monthly' ? ({quarterly:t('per_quarterly'),halfyear:t('per_halfyear'),yearly:t('yearly')})[b.periodicity] : null, b.due_day ? t('due_day').split(' ')[0] + ' ' + b.due_day : null].filter(Boolean).join(' · ')}</span>
             ${meta2 ? `<span class="row-cat">${meta2}</span>` : ''}
           </div>
           <div class="row-side">
@@ -1462,8 +1497,11 @@ async function deletePayment(pid) {
 function renderBillDetail(id) {
   const b = BILLS_CACHE.find(x => x.id === id);
   if (!b) return;
+  const perLbl = { monthly: t('monthly'), quarterly: t('per_quarterly'), halfyear: t('per_halfyear'), yearly: t('yearly') };
   const rows = [
     [t('category'), b.category],
+    [t('customer_ref_lbl'), b.customer_ref],
+    [t('periodicity'), perLbl[b.periodicity || 'monthly']],
     [t('ref_lbl'), fmtMoney(b.reference_amount, b.currency)],
     [t('limit_lbl'), b.limit_amount ? fmtMoney(b.limit_amount, b.currency) : null],
     [t('due_day'), b.due_day],
@@ -1471,6 +1509,7 @@ function renderBillDetail(id) {
     [t('bank'), b.bank],
     [t('card'), b.card_last4 ? '•••• ' + b.card_last4 : null],
     [t('country'), b.country ? `${flagEmoji(b.country)} ${b.country}` : null],
+    [t('notes_lbl'), b.notes],
     [t('status'), b.active ? t('active_lbl') : t('inactive_lbl')]
   ].filter(r => r[1]);
 
@@ -1520,6 +1559,14 @@ function renderBillForm(id) {
         <select id="b-cur">${CURRENCIES.map(c => `<option value="${c}"${c === cur ? ' selected' : ''}>${c}</option>`).join('')}</select>
       </div>
       <input id="b-limit" type="number" step="0.01" inputmode="decimal" placeholder="${t('limit_ph')}" value="${b && b.limit_amount ? b.limit_amount : ''}">
+      <input id="b-ref" type="text" placeholder="${t('customer_ref_ph')}" value="${esc(b && b.customer_ref)}">
+      <label class="lbl">${t('periodicity')}</label>
+      <select id="b-per">
+        <option value="monthly"${!b || b.periodicity === 'monthly' || !b.periodicity ? ' selected' : ''}>${t('monthly')}</option>
+        <option value="quarterly"${b && b.periodicity === 'quarterly' ? ' selected' : ''}>${t('per_quarterly')}</option>
+        <option value="halfyear"${b && b.periodicity === 'halfyear' ? ' selected' : ''}>${t('per_halfyear')}</option>
+        <option value="yearly"${b && b.periodicity === 'yearly' ? ' selected' : ''}>${t('yearly')}</option>
+      </select>
       <label class="lbl">${t('due_day')}</label>
       <input id="b-day" type="number" min="1" max="31" inputmode="numeric" value="${b && b.due_day ? b.due_day : ''}">
       <div class="form-row">
@@ -1528,6 +1575,7 @@ function renderBillForm(id) {
       </div>
       <input id="b-bank" type="text" placeholder="${t('bank_ph')}" value="${esc(b && b.bank)}">
       <input id="b-card" type="text" inputmode="numeric" maxlength="4" placeholder="${t('card_ph')}" value="${esc(b && b.card_last4)}">
+      <input id="b-notes" type="text" placeholder="${t('notes_ph')}" value="${esc(b && b.notes)}">
       <div id="b-err"></div>
       <button class="btn-primary" onclick="saveBill(${isEdit ? `'${b.id}'` : 'null'})">${t('save')}</button>
       <button class="btn-secondary" onclick="renderBills()">${t('cancel')}</button>
@@ -1557,6 +1605,9 @@ async function saveBill(id) {
     limit_amount: limit > 0 ? limit : null,
     currency: g('b-cur').value,
     due_day: day || null,
+    customer_ref: g('b-ref').value.trim() || null,
+    periodicity: g('b-per').value,
+    notes: g('b-notes').value.trim() || null,
     payment_method: g('b-method').value || null,
     country: g('b-country').value || null,
     bank: g('b-bank').value.trim() || null,
