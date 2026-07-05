@@ -1,4 +1,4 @@
-// AboKlar — build 16 — 2026-07-05T09:58:56.461Z
+// AboKlar — build 17 — 2026-07-05T10:02:32.568Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -12,6 +12,7 @@ const sb = window.supabase.createClient(SUPA_URL, SUPA_KEY);
 const I18N = {
   pt: {
     tagline: 'Subscrições e faturas, claro.',
+    next_due: 'Próximo vencimento',
     customer_ref_ph: 'Nº de cliente/contrato (opcional)',
     periodicity: 'Periodicidade',
     per_quarterly: 'Trimestral',
@@ -158,6 +159,7 @@ const I18N = {
   },
   de: {
     tagline: 'Abos und Rechnungen, klar.',
+    next_due: 'Nächste Fälligkeit',
     customer_ref_ph: 'Kunden-/Vertragsnummer (optional)',
     periodicity: 'Periodizität',
     per_quarterly: 'Vierteljährlich',
@@ -304,6 +306,7 @@ const I18N = {
   },
   fr: {
     tagline: 'Abonnements et factures, clairement.',
+    next_due: 'Prochaine échéance',
     customer_ref_ph: 'Nº client/contrat (optionnel)',
     periodicity: 'Périodicité',
     per_quarterly: 'Trimestriel',
@@ -450,6 +453,7 @@ const I18N = {
   },
   it: {
     tagline: 'Abbonamenti e fatture, chiaro.',
+    next_due: 'Prossima scadenza',
     customer_ref_ph: 'Nº cliente/contratto (opzionale)',
     periodicity: 'Periodicità',
     per_quarterly: 'Trimestrale',
@@ -596,6 +600,7 @@ const I18N = {
   },
   en: {
     tagline: 'Subscriptions and bills, clear.',
+    next_due: 'Next due date',
     customer_ref_ph: 'Customer/contract no. (optional)',
     periodicity: 'Frequency',
     per_quarterly: 'Quarterly',
@@ -1267,6 +1272,27 @@ function businessDaysSince(iso) {
   return count;
 }
 
+const PER_MONTHS = { monthly: 1, quarterly: 3, halfyear: 6, yearly: 12 };
+
+function nextBillDue(b) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  let base = b.due_date ? new Date(b.due_date + 'T00:00:00')
+    : (b.due_day ? new Date(today.getFullYear(), today.getMonth(), b.due_day) : null);
+  if (!base) return null;
+  const step = PER_MONTHS[b.periodicity || 'monthly'] || 1;
+  const dayWanted = base.getDate();
+  let d = new Date(base); let g = 0;
+  while (d < today && g++ < 600) {
+    let m = d.getMonth() + step, y = d.getFullYear();
+    while (m > 11) { m -= 12; y++; }
+    const last = new Date(y, m + 1, 0).getDate();
+    d = new Date(y, m, Math.min(dayWanted, last));
+  }
+  const days = Math.round((d - today) / 86400000);
+  const iso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  return { date: iso, days };
+}
+
 async function loadBills() {
   const { data, error } = await sb.from('bills').select('*').order('due_day');
   if (error) { console.error(error); return []; }
@@ -1309,7 +1335,8 @@ async function renderBills() {
           <div class="sub-icon-wrap">${subIcon(b)}</div>
           <div class="row-main">
             <span class="row-name"><span class="dot ${b.active ? 'dot-on' : 'dot-off'}"></span>${b.name} ${flagEmoji(b.country)}</span>
-            <span class="row-cat">${[b.category, b.periodicity && b.periodicity !== 'monthly' ? ({quarterly:t('per_quarterly'),halfyear:t('per_halfyear'),yearly:t('yearly')})[b.periodicity] : null, b.due_day ? t('due_day').split(' ')[0] + ' ' + b.due_day : null].filter(Boolean).join(' · ')}</span>
+            <span class="row-cat">${[b.category, b.periodicity && b.periodicity !== 'monthly' ? ({quarterly:t('per_quarterly'),halfyear:t('per_halfyear'),yearly:t('yearly')})[b.periodicity] : null].filter(Boolean).join(' · ')}</span>
+            ${(() => { const nd = nextBillDue(b); return nd ? `<span class="row-cat">${fmtDate(nd.date)} (${t('in_days')} ${nd.days}d)</span>` : ''; })()}
             ${meta2 ? `<span class="row-cat">${meta2}</span>` : ''}
           </div>
           <div class="row-side">
@@ -1504,7 +1531,7 @@ function renderBillDetail(id) {
     [t('periodicity'), perLbl[b.periodicity || 'monthly']],
     [t('ref_lbl'), fmtMoney(b.reference_amount, b.currency)],
     [t('limit_lbl'), b.limit_amount ? fmtMoney(b.limit_amount, b.currency) : null],
-    [t('due_day'), b.due_day],
+    [t('next_due'), (() => { const nd = nextBillDue(b); return nd ? `${fmtDate(nd.date)} (${t('in_days')} ${nd.days}d)` : null; })()],
     [t('method'), b.payment_method],
     [t('bank'), b.bank],
     [t('card'), b.card_last4 ? '•••• ' + b.card_last4 : null],
@@ -1567,8 +1594,8 @@ function renderBillForm(id) {
         <option value="halfyear"${b && b.periodicity === 'halfyear' ? ' selected' : ''}>${t('per_halfyear')}</option>
         <option value="yearly"${b && b.periodicity === 'yearly' ? ' selected' : ''}>${t('yearly')}</option>
       </select>
-      <label class="lbl">${t('due_day')}</label>
-      <input id="b-day" type="number" min="1" max="31" inputmode="numeric" value="${b && b.due_day ? b.due_day : ''}">
+      <label class="lbl">${t('next_due')}</label>
+      <input id="b-date" type="date" value="${b && b.due_date ? b.due_date : ''}">
       <div class="form-row">
         <select id="b-method"><option value="">${t('method')}…</option>${PAY_METHODS.map(m => `<option value="${m}"${b && b.payment_method === m ? ' selected' : ''}>${m}</option>`).join('')}</select>
         <select id="b-country"><option value="">${t('country')}…</option>${COUNTRIES.map(c => `<option value="${c}"${b && b.country === c ? ' selected' : ''}>${flagEmoji(c)} ${c}</option>`).join('')}</select>
@@ -1589,12 +1616,11 @@ async function saveBill(id) {
   const name = g('b-name').value.trim();
   const amount = parseFloat(g('b-amount').value);
   const limit = parseFloat(g('b-limit').value);
-  const day = parseInt(g('b-day').value, 10);
+  const ddate = g('b-date').value || null;
   const errEl = g('b-err');
 
   if (!name) { errEl.innerHTML = `<div class="err">${t('err_fill')}</div>`; return; }
   if (!amount || amount <= 0) { errEl.innerHTML = `<div class="err">${t('err_amount')}</div>`; return; }
-  if (day && (day < 1 || day > 31)) { errEl.innerHTML = `<div class="err">${t('err_day')}</div>`; return; }
 
   const { data: { user } } = await sb.auth.getUser();
   const row = {
@@ -1604,7 +1630,8 @@ async function saveBill(id) {
     reference_amount: amount,
     limit_amount: limit > 0 ? limit : null,
     currency: g('b-cur').value,
-    due_day: day || null,
+    due_date: ddate,
+    due_day: ddate ? parseInt(ddate.slice(8, 10), 10) : null,
     customer_ref: g('b-ref').value.trim() || null,
     periodicity: g('b-per').value,
     notes: g('b-notes').value.trim() || null,

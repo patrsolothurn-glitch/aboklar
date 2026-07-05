@@ -2,6 +2,7 @@
 const I18N = {
   pt: {
     tagline: 'Subscrições e faturas, claro.',
+    next_due: 'Próximo vencimento',
     customer_ref_ph: 'Nº de cliente/contrato (opcional)',
     periodicity: 'Periodicidade',
     per_quarterly: 'Trimestral',
@@ -148,6 +149,7 @@ const I18N = {
   },
   de: {
     tagline: 'Abos und Rechnungen, klar.',
+    next_due: 'Nächste Fälligkeit',
     customer_ref_ph: 'Kunden-/Vertragsnummer (optional)',
     periodicity: 'Periodizität',
     per_quarterly: 'Vierteljährlich',
@@ -294,6 +296,7 @@ const I18N = {
   },
   fr: {
     tagline: 'Abonnements et factures, clairement.',
+    next_due: 'Prochaine échéance',
     customer_ref_ph: 'Nº client/contrat (optionnel)',
     periodicity: 'Périodicité',
     per_quarterly: 'Trimestriel',
@@ -440,6 +443,7 @@ const I18N = {
   },
   it: {
     tagline: 'Abbonamenti e fatture, chiaro.',
+    next_due: 'Prossima scadenza',
     customer_ref_ph: 'Nº cliente/contratto (opzionale)',
     periodicity: 'Periodicità',
     per_quarterly: 'Trimestrale',
@@ -586,6 +590,7 @@ const I18N = {
   },
   en: {
     tagline: 'Subscriptions and bills, clear.',
+    next_due: 'Next due date',
     customer_ref_ph: 'Customer/contract no. (optional)',
     periodicity: 'Frequency',
     per_quarterly: 'Quarterly',
