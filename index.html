@@ -21,6 +21,16 @@
       --input-bg: #0F141B; --err: #F87171; --ok: #34D399;
     }
   }
+  html[data-theme="light"] {
+    --bg: #FAFAF8; --card: #FFFFFF; --ink: #111827; --muted: #78716C;
+    --amber: #F59E0B; --amber-ink: #92400E; --border: #E7E5E4;
+    --input-bg: #FFFFFF; --err: #DC2626; --ok: #059669;
+  }
+  html[data-theme="dark"] {
+    --bg: #0B0F14; --card: #151B23; --ink: #F5F5F4; --muted: #8A8F98;
+    --amber: #FBBF24; --amber-ink: #FBBF24; --border: #2B3441;
+    --input-bg: #0F141B; --err: #F87171; --ok: #34D399;
+  }
   * { margin:0; padding:0; box-sizing:border-box; }
   body {
     font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -188,9 +198,9 @@
   .confirm-box p { margin:6px 0; font-size:15px; }
 </style>
 </head>
-<body data-build="11">
+<body data-build="12">
   <div id="app"><p style="color:var(--muted)">A carregar…</p></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="app.js?v=11"></script>
+  <script src="app.js?v=12"></script>
 </body>
 </html>

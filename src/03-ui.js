@@ -125,12 +125,6 @@ function renderHelp() {
   `);
 }
 
-function renderSettings() {
-  sectionShell(t('settings'), `
-    <p class="muted" style="margin-top:40px">${t('section_soon')}</p>
-    <button class="btn-secondary" style="margin-top:24px" onclick="doLogout()">${t('logout')}</button>`);
-}
-
 // ---- handlers ----
 async function uiLogin() {
   const email = document.getElementById('f-email').value.trim();
@@ -166,7 +160,9 @@ async function uiReset() {
 // ---- arranque ----
 async function boot() {
   const { data: { session } } = await sb.auth.getSession();
-  if (session && session.user) renderHome(session.user);
-  else renderAuth('login');
+  if (session && session.user) {
+    await loadProfile();
+    renderHome(session.user);
+  } else renderAuth('login');
 }
 document.addEventListener('DOMContentLoaded', boot);

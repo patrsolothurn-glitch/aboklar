@@ -1,4 +1,4 @@
-// AboKlar — build 11 — 2026-07-05T08:25:26.930Z
+// AboKlar — build 12 — 2026-07-05T08:28:52.598Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -98,6 +98,15 @@ const I18N = {
     delete_payment: 'Apagar pagamento',
     limit_lbl: 'Limite',
     ref_lbl: 'Referência',
+    set_language: 'Idioma',
+    set_currency: 'Moeda por defeito',
+    set_theme: 'Tema',
+    theme_auto: 'Automático',
+    theme_light: 'Claro',
+    theme_dark: 'Escuro',
+    set_name: 'Nome',
+    saved: 'Guardado ✓',
+    lang_soon: '(brevemente)',
     help: 'Ajuda',
     help_intro: 'Como funciona o AboKlar, passo a passo.',
     help_subs_title: '📋 Subscrições',
@@ -305,12 +314,6 @@ function renderHelp() {
   `);
 }
 
-function renderSettings() {
-  sectionShell(t('settings'), `
-    <p class="muted" style="margin-top:40px">${t('section_soon')}</p>
-    <button class="btn-secondary" style="margin-top:24px" onclick="doLogout()">${t('logout')}</button>`);
-}
-
 // ---- handlers ----
 async function uiLogin() {
   const email = document.getElementById('f-email').value.trim();
@@ -346,8 +349,10 @@ async function uiReset() {
 // ---- arranque ----
 async function boot() {
   const { data: { session } } = await sb.auth.getSession();
-  if (session && session.user) renderHome(session.user);
-  else renderAuth('login');
+  if (session && session.user) {
+    await loadProfile();
+    renderHome(session.user);
+  } else renderAuth('login');
 }
 document.addEventListener('DOMContentLoaded', boot);
 
@@ -1002,5 +1007,96 @@ async function deleteBill(id) {
   if (error) { console.error(error); alert(t('err_generic')); return; }
   document.querySelectorAll('.modal-bg').forEach(m => m.remove());
   renderBills();
+}
+
+
+// ===== 06-settings.js =====
+// Definições — nome, idioma, moeda, tema (guardado no perfil, sincroniza entre dispositivos)
+let PROFILE = null;
+
+const LANGS = [
+  { code: 'pt', label: '🇵🇹 Português' },
+  { code: 'de', label: '🇩🇪 Deutsch' },
+  { code: 'fr', label: '🇫🇷 Français' },
+  { code: 'it', label: '🇮🇹 Italiano' },
+  { code: 'en', label: '🇬🇧 English' }
+];
+
+async function loadProfile() {
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return null;
+  const { data } = await sb.from('profiles').select('*').eq('id', user.id).single();
+  PROFILE = data;
+  if (PROFILE) {
+    if (I18N[PROFILE.language]) LANG = PROFILE.language;
+    applyTheme(PROFILE.theme || 'auto');
+  }
+  return PROFILE;
+}
+
+function applyTheme(mode) {
+  document.documentElement.setAttribute('data-theme', mode === 'auto' ? '' : mode);
+}
+
+async function renderSettings() {
+  if (!PROFILE) await loadProfile();
+  const p = PROFILE || {};
+  sectionShell(t('settings'), `
+    <div class="form">
+      <label class="lbl">${t('set_name')}</label>
+      <input id="set-name" type="text" value="${(p.display_name || '').replace(/"/g, '&quot;')}">
+
+      <label class="lbl">${t('set_language')}</label>
+      <select id="set-lang">
+        ${LANGS.map(l => `<option value="${l.code}"${p.language === l.code ? ' selected' : ''}${I18N[l.code] ? '' : ' disabled'}>${l.label}${I18N[l.code] ? '' : ' ' + t('lang_soon')}</option>`).join('')}
+      </select>
+
+      <label class="lbl">${t('set_currency')}</label>
+      <select id="set-cur">
+        ${CURRENCIES.map(c => `<option value="${c}"${(p.currency || 'CHF') === c ? ' selected' : ''}>${c}</option>`).join('')}
+      </select>
+
+      <label class="lbl">${t('set_theme')}</label>
+      <div class="seg">
+        <button class="seg-btn${(p.theme || 'auto') === 'auto' ? ' on' : ''}" onclick="setTheme(this,'auto')">${t('theme_auto')}</button>
+        <button class="seg-btn${p.theme === 'light' ? ' on' : ''}" onclick="setTheme(this,'light')">${t('theme_light')}</button>
+        <button class="seg-btn${p.theme === 'dark' ? ' on' : ''}" onclick="setTheme(this,'dark')">${t('theme_dark')}</button>
+      </div>
+      <input type="hidden" id="set-theme" value="${p.theme || 'auto'}">
+
+      <div id="set-msg"></div>
+      <button class="btn-primary" onclick="saveSettings()">${t('save')}</button>
+      <div class="divider"></div>
+      <button class="btn-secondary" onclick="doLogout()">${t('logout')}</button>
+    </div>
+  `);
+}
+
+function setTheme(btn, mode) {
+  document.getElementById('set-theme').value = mode;
+  btn.parentElement.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  applyTheme(mode);
+}
+
+async function saveSettings() {
+  const { data: { user } } = await sb.auth.getUser();
+  const display_name = document.getElementById('set-name').value.trim();
+  const language = document.getElementById('set-lang').value;
+  const currency = document.getElementById('set-cur').value;
+  const theme = document.getElementById('set-theme').value;
+
+  const { error } = await sb.from('profiles')
+    .update({ display_name, language, currency, theme }).eq('id', user.id);
+  if (error) { console.error(error); document.getElementById('set-msg').innerHTML = `<div class="err">${t('err_generic')}</div>`; return; }
+
+  // atualizar também os metadados de auth (para o "Olá, X")
+  await sb.auth.updateUser({ data: { display_name } });
+
+  PROFILE = { ...PROFILE, display_name, language, currency, theme };
+  if (I18N[language]) LANG = language;
+  applyTheme(theme);
+  document.getElementById('set-msg').innerHTML = `<div class="ok">${t('saved')}</div>`;
+  setTimeout(renderSettings, 700);
 }
 
