@@ -64,10 +64,10 @@
   .pw-wrap input { padding-right:52px; }
   .pw-eye {
     position:absolute; right:6px; top:50%; transform:translateY(-50%);
-    background:none; border:none; font-size:20px; padding:8px;
-    opacity:.45; line-height:1;
+    background:var(--input-bg); border:1.5px solid var(--border); border-radius:10px;
+    font-size:19px; padding:7px 10px; line-height:1; opacity:.9;
   }
-  .pw-eye.on { opacity:1; }
+  .pw-eye.on { border-color:var(--amber); background:rgba(245,158,11,.12); opacity:1; }
   .page { width:100%; max-width:420px; align-self:flex-start; margin-top:8px; }
   body { align-items:flex-start; }
   .topbar { display:flex; align-items:center; justify-content:space-between; padding:8px 0 20px; }
@@ -198,9 +198,9 @@
   .confirm-box p { margin:6px 0; font-size:15px; }
 </style>
 </head>
-<body data-build="12">
+<body data-build="13">
   <div id="app"><p style="color:var(--muted)">A carregar…</p></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="app.js?v=12"></script>
+  <script src="app.js?v=13"></script>
 </body>
 </html>
