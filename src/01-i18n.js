@@ -2,6 +2,10 @@
 const I18N = {
   pt: {
     tagline: 'Subscrições e faturas, claro.',
+    group_due: '📌 Este mês',
+    group_paid: '✓ Pagas',
+    group_later: '📅 Mais tarde',
+    group_inactive: '⏸ Desativadas',
     weekdays_short: ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'],
     weather_today: 'Hoje',
     weather_enable: '📍 Mostrar o tempo (usa a localização)',
@@ -152,6 +156,10 @@ const I18N = {
   },
   de: {
     tagline: 'Abos und Rechnungen, klar.',
+    group_due: '📌 Diesen Monat',
+    group_paid: '✓ Bezahlt',
+    group_later: '📅 Später',
+    group_inactive: '⏸ Deaktiviert',
     weekdays_short: ['So','Mo','Di','Mi','Do','Fr','Sa'],
     weather_today: 'Heute',
     weather_enable: '📍 Wetter anzeigen (nutzt den Standort)',
@@ -302,6 +310,10 @@ const I18N = {
   },
   fr: {
     tagline: 'Abonnements et factures, clairement.',
+    group_due: '📌 Ce mois-ci',
+    group_paid: '✓ Payées',
+    group_later: '📅 Plus tard',
+    group_inactive: '⏸ Désactivées',
     weekdays_short: ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'],
     weather_today: "Aujourd'hui",
     weather_enable: '📍 Afficher la météo (utilise la position)',
@@ -452,6 +464,10 @@ const I18N = {
   },
   it: {
     tagline: 'Abbonamenti e fatture, chiaro.',
+    group_due: '📌 Questo mese',
+    group_paid: '✓ Pagate',
+    group_later: '📅 Più tardi',
+    group_inactive: '⏸ Disattivate',
     weekdays_short: ['Dom','Lun','Mar','Mer','Gio','Ven','Sab'],
     weather_today: 'Oggi',
     weather_enable: '📍 Mostra il meteo (usa la posizione)',
@@ -602,6 +618,10 @@ const I18N = {
   },
   en: {
     tagline: 'Subscriptions and bills, clear.',
+    group_due: '📌 This month',
+    group_paid: '✓ Paid',
+    group_later: '📅 Later',
+    group_inactive: '⏸ Deactivated',
     weekdays_short: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
     weather_today: 'Today',
     weather_enable: '📍 Show weather (uses location)',

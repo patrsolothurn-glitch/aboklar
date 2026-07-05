@@ -1,5 +1,16 @@
 // Faturas — CRUD + ✓ Pago + arquivo mensal + limite + bloqueio 5 dias úteis
 let BILLS_CACHE = [];
+let ARCH_HIDDEN = localStorage.getItem('aboklar_hide_archtotal') === '1';
+
+function toggleArchTotal() {
+  ARCH_HIDDEN = !ARCH_HIDDEN;
+  localStorage.setItem('aboklar_hide_archtotal', ARCH_HIDDEN ? '1' : '0');
+  const card = document.getElementById('arch-total');
+  if (!card) return;
+  card.querySelectorAll('.total-val').forEach(el => el.classList.toggle('hidden-val', ARCH_HIDDEN));
+  const eye = card.querySelector('.total-eye');
+  if (eye) eye.textContent = ARCH_HIDDEN ? '🙈' : '👁';
+}
 let PAYMENTS_CACHE = [];
 let BILLS_TAB = 'bills'; // 'bills' | 'archive'
 let ARCH_PERIOD = null;  // 'YYYY-MM'
@@ -93,18 +104,18 @@ async function renderBills() {
     const paidBy = {};
     for (const p of pays) paidBy[p.bill_id] = p;
 
-    const list = BILLS_CACHE.length
-      ? BILLS_CACHE.map(b => {
-          const pay = paidBy[b.id];
-          const meta2 = [b.payment_method, b.bank, b.card_last4 ? '••••' + b.card_last4 : null].filter(Boolean).join(' · ');
-          return `
-        <div class="row-card sub-row${b.active ? '' : ' off'}" onclick="renderBillDetail('${b.id}')">
+    const billRow = b => {
+      const pay = paidBy[b.id];
+      const nd = nextBillDue(b);
+      const meta2 = [b.payment_method, b.bank, b.card_last4 ? '••••' + b.card_last4 : null].filter(Boolean).join(' · ');
+      return `
+        <div class="row-card sub-row${b.active ? '' : ' off'}${pay ? ' paid-row' : ''}" onclick="renderBillDetail('${b.id}')">
           <div class="sub-icon-wrap">${subIcon(b)}</div>
           <div class="row-main">
             <span class="row-name"><span class="dot ${b.active ? 'dot-on' : 'dot-off'}"></span>${b.name} ${flagEmoji(b.country)}</span>
             <span class="row-cat">${[b.category, b.periodicity && b.periodicity !== 'monthly' ? ({quarterly:t('per_quarterly'),halfyear:t('per_halfyear'),yearly:t('yearly')})[b.periodicity] : null].filter(Boolean).join(' · ')}</span>
-            ${(() => { const nd = nextBillDue(b); return nd ? `<span class="row-cat">${fmtDate(nd.date)} (${t('in_days')} ${nd.days}d)</span>` : ''; })()}
             ${meta2 ? `<span class="row-cat">${meta2}</span>` : ''}
+            ${nd ? `<span class="row-cat">${fmtDate(nd.date)} (${t('in_days')} ${nd.days}d)</span>` : ''}
           </div>
           <div class="row-side">
             <span class="row-amount">${fmtMoney(pay ? pay.amount : b.reference_amount, b.currency)}</span>
@@ -113,7 +124,36 @@ async function renderBills() {
               : (b.active ? `<button class="btn-paid" onclick="event.stopPropagation();openPaidModal('${b.id}')">${t('mark_paid')}</button>` : '')}
           </div>
         </div>`;
-        }).join('')
+    };
+
+    const now = new Date();
+    const groups = { due: [], paid: [], later: [], inactive: [] };
+    for (const b of BILLS_CACHE) {
+      if (!b.active) { groups.inactive.push(b); continue; }
+      if (paidBy[b.id]) { groups.paid.push(b); continue; }
+      const nd = nextBillDue(b);
+      if (nd && new Date(nd.date + 'T00:00:00').getMonth() === now.getMonth() &&
+          new Date(nd.date + 'T00:00:00').getFullYear() === now.getFullYear()) groups.due.push(b);
+      else groups.later.push(b);
+    }
+    const byDays = (a, c) => {
+      const da = nextBillDue(a), dc = nextBillDue(c);
+      if (!da && !dc) return a.name.localeCompare(c.name);
+      if (!da) return 1; if (!dc) return -1;
+      return da.days - dc.days;
+    };
+    groups.due.sort(byDays); groups.later.sort(byDays);
+    groups.paid.sort((a, c) => a.name.localeCompare(c.name));
+
+    const section = (title, arr) => arr.length
+      ? `<div class="group-title">${title}</div>` + arr.map(billRow).join('')
+      : '';
+
+    const list = BILLS_CACHE.length
+      ? section(t('group_due'), groups.due) +
+        section(t('group_later'), groups.later) +
+        section(t('group_paid'), groups.paid) +
+        section(t('group_inactive'), groups.inactive)
       : `<p class="muted" style="margin-top:30px">${t('no_bills')}</p>`;
 
     sectionShell(t('bills'), `
@@ -133,6 +173,7 @@ async function renderBills() {
       totals[cur] = (totals[cur] || 0) + Number(p.amount);
     }
 
+    pays.sort((a, b) => new Date(b.paid_at) - new Date(a.paid_at));
     const list = pays.length
       ? pays.map(p => {
           const b = billById[p.bill_id] || { name: '?', currency: 'CHF' };
@@ -160,9 +201,9 @@ async function renderBills() {
         <button class="icon-btn" onclick="shiftArch(1)">›</button>
       </div>
       ${Object.keys(totals).length ? `
-        <div class="total-card" style="margin-bottom:14px">
-          <span class="total-label">${t('month_total')}</span>
-          ${Object.entries(totals).map(([c, v]) => `<span class="total-val">${fmtMoney(v, c)}</span>`).join('')}
+        <div class="total-card" id="arch-total" style="margin-bottom:14px" onclick="toggleArchTotal()">
+          <span class="total-label">${t('month_total')} <span class="total-eye">${ARCH_HIDDEN ? '🙈' : '👁'}</span></span>
+          ${Object.entries(totals).map(([c, v]) => `<span class="total-val${ARCH_HIDDEN ? ' hidden-val' : ''}">${fmtMoney(v, c)}</span>`).join('')}
         </div>` : ''}
       <div class="rows">${list}</div>
     `);
