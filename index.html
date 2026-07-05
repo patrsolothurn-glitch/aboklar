@@ -77,15 +77,15 @@
   .topbar-name .klar { color:var(--amber); font-style:italic; }
   .icon-btn { background:none; border:1.5px solid var(--border); border-radius:12px; width:40px; height:40px; font-size:18px; padding:0; color:var(--ink); }
   .greet { font-size:17px; font-weight:600; margin:4px 0 20px; }
-  .home-grid { display:flex; flex-direction:column; gap:14px; }
+  .home-grid { display:flex; flex-direction:row; gap:12px; }
   .home-card {
-    display:flex; flex-direction:column; align-items:flex-start; gap:6px;
-    padding:22px 20px; border-radius:20px; text-align:left;
+    flex:1; display:flex; flex-direction:column; align-items:center; gap:6px;
+    padding:20px 12px; border-radius:20px; text-align:center;
   }
   .card-subs { background:linear-gradient(135deg,#1F2937,#0B0F14); color:#F5F5F4; }
   .card-bills { background:rgba(245,158,11,.12); border:1.5px solid var(--amber); color:var(--amber-ink); }
   .home-emoji { font-size:28px; }
-  .home-title { font-size:20px; font-weight:700; }
+  .home-title { font-size:18px; font-weight:700; }
   .home-hint { font-size:13px; opacity:.7; }
   .btn-help {
     margin-top:22px; width:100%; background:none; color:var(--muted);
@@ -227,9 +227,9 @@
   .confirm-box p { margin:6px 0; font-size:15px; }
 </style>
 </head>
-<body data-build="19">
+<body data-build="20">
   <div id="app"><p style="color:var(--muted)">A carregar…</p></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="app.js?v=19"></script>
+  <script src="app.js?v=20"></script>
 </body>
 </html>
