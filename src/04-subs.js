@@ -28,6 +28,14 @@ async function getRates(base) {
   if (rates) {
     FX = { base, rates, ts: Date.now() };
     localStorage.setItem('aboklar_fx2', JSON.stringify(FX));
+  } else {
+    // rede de segurança: taxas fixas aproximadas (método Abo Kontrolle)
+    const EURper = { EUR: 1, CHF: 1.03, USD: 0.92, GBP: 1.17 };
+    const fixed = {};
+    for (const c of Object.keys(EURper)) {
+      if (c !== base) fixed[c] = (EURper[base] || 1) / EURper[c];
+    }
+    FX = { base, rates: fixed, ts: 0 };
   }
   return FX;
 }
