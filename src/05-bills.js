@@ -151,6 +151,7 @@ async function renderBills() {
             <span class="row-cat">${[b.category, b.periodicity && b.periodicity !== 'monthly' ? ({quarterly:t('per_quarterly'),halfyear:t('per_halfyear'),yearly:t('yearly')})[b.periodicity] : null].filter(Boolean).join(' · ')}</span>
             ${meta2 ? `<span class="row-cat">${meta2}</span>` : ''}
             ${nd ? `<span class="row-cat">${fmtDate(nd.date)} (${t('in_days')} ${nd.days}d)</span>` : ''}
+            ${b.period_start || b.period_end ? `<span class="row-cat">📆 ${b.period_start ? fmtDate(b.period_start) : '…'} – ${b.period_end ? fmtDate(b.period_end) : '…'}</span>` : ''}
           </div>
           <div class="row-side">
             <span class="row-amount">${fmtMoney(pay ? pay.amount : b.reference_amount, b.currency)}</span>
@@ -397,6 +398,7 @@ function renderBillDetail(id) {
     [t('ref_lbl'), fmtMoney(b.reference_amount, b.currency)],
     [t('limit_lbl'), b.limit_amount ? fmtMoney(b.limit_amount, b.currency) : null],
     [t('next_due'), (() => { const nd = nextBillDue(b); return nd ? `${fmtDate(nd.date)} (${t('in_days')} ${nd.days}d)` : null; })()],
+    [t('period_row'), b.period_start || b.period_end ? `${b.period_start ? fmtDate(b.period_start) : '…'} – ${b.period_end ? fmtDate(b.period_end) : '…'}` : null],
     [t('method'), b.payment_method],
     [t('bank'), b.bank],
     [t('card'), b.card_last4 ? '•••• ' + b.card_last4 : null],
@@ -461,6 +463,11 @@ function renderBillForm(id) {
       </select>
       <label class="lbl">${t('next_due')}</label>
       <input id="b-date" type="date" value="${b && b.due_date ? b.due_date : ''}">
+      <label class="lbl">${t('period_lbl')}</label>
+      <div class="form-row">
+        <input id="b-pstart" type="date" value="${b && b.period_start ? b.period_start : ''}">
+        <input id="b-pend" type="date" value="${b && b.period_end ? b.period_end : ''}">
+      </div>
       <div class="form-row">
         <select id="b-method"><option value="">${t('method')}…</option>${PAY_METHODS.map(m => `<option value="${m}"${b && b.payment_method === m ? ' selected' : ''}>${m}</option>`).join('')}</select>
         <select id="b-country"><option value="">${t('country')}…</option>${COUNTRIES.map(c => `<option value="${c}"${b && b.country === c ? ' selected' : ''}>${flagEmoji(c)} ${c}</option>`).join('')}</select>
@@ -485,14 +492,16 @@ async function saveBill(id) {
   const errEl = g('b-err');
 
   if (!name) { errEl.innerHTML = `<div class="err">${t('err_fill')}</div>`; return; }
-  if (!amount || amount <= 0) { errEl.innerHTML = `<div class="err">${t('err_amount')}</div>`; return; }
+  if (g('b-amount').value.trim() !== '' && (isNaN(amount) || amount < 0)) { errEl.innerHTML = `<div class="err">${t('err_amount')}</div>`; return; }
 
   const { data: { user } } = await sb.auth.getUser();
   const row = {
     user_id: user.id, name,
     website: g('b-website').value.trim() || null,
     category: g('b-cat').value.trim() || null,
-    reference_amount: amount,
+    reference_amount: isNaN(amount) ? 0 : amount,
+    period_start: g('b-pstart').value || null,
+    period_end: g('b-pend').value || null,
     limit_amount: limit > 0 ? limit : null,
     currency: g('b-cur').value,
     due_date: ddate,

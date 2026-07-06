@@ -1,4 +1,4 @@
-// AboKlar — build 35 — 2026-07-06T12:21:30.516Z
+// AboKlar — build 36 — 2026-07-06T12:25:46.904Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -135,6 +135,8 @@ const I18N = {
     no_bills: 'Ainda não tens faturas. Toca em + Nova para começar.',
     no_payments: 'Sem pagamentos neste mês.',
     month_total: 'Total do mês',
+    period_lbl: 'Período (opcional) — de / até',
+    period_row: 'Período',
     year_total: 'Total do ano',
     over_limit: 'acima do limite',
     confirm_paid_title: 'Confirmar pagamento',
@@ -299,6 +301,8 @@ const I18N = {
     no_bills: 'Noch keine Rechnungen. Tippe auf + Neu, um zu starten.',
     no_payments: 'Keine Zahlungen in diesem Monat.',
     month_total: 'Monatstotal',
+    period_lbl: 'Zeitraum (optional) — von / bis',
+    period_row: 'Zeitraum',
     year_total: 'Jahrestotal',
     over_limit: 'über der Limite',
     confirm_paid_title: 'Zahlung bestätigen',
@@ -463,6 +467,8 @@ const I18N = {
     no_bills: 'Pas encore de factures. Touche + Nouveau pour commencer.',
     no_payments: 'Aucun paiement ce mois-ci.',
     month_total: 'Total du mois',
+    period_lbl: 'Période (optionnel) — du / au',
+    period_row: 'Période',
     year_total: "Total de l'année",
     over_limit: 'au-dessus de la limite',
     confirm_paid_title: 'Confirmer le paiement',
@@ -627,6 +633,8 @@ const I18N = {
     no_bills: 'Nessuna fattura. Tocca + Nuovo per iniziare.',
     no_payments: 'Nessun pagamento questo mese.',
     month_total: 'Totale del mese',
+    period_lbl: 'Periodo (opzionale) — dal / al',
+    period_row: 'Periodo',
     year_total: "Totale dell'anno",
     over_limit: 'oltre il limite',
     confirm_paid_title: 'Conferma pagamento',
@@ -791,6 +799,8 @@ const I18N = {
     no_bills: 'No bills yet. Tap + New to start.',
     no_payments: 'No payments this month.',
     month_total: 'Month total',
+    period_lbl: 'Period (optional) — from / to',
+    period_row: 'Period',
     year_total: 'Year total',
     over_limit: 'over the limit',
     confirm_paid_title: 'Confirm payment',
@@ -1543,6 +1553,7 @@ async function renderBills() {
             <span class="row-cat">${[b.category, b.periodicity && b.periodicity !== 'monthly' ? ({quarterly:t('per_quarterly'),halfyear:t('per_halfyear'),yearly:t('yearly')})[b.periodicity] : null].filter(Boolean).join(' · ')}</span>
             ${meta2 ? `<span class="row-cat">${meta2}</span>` : ''}
             ${nd ? `<span class="row-cat">${fmtDate(nd.date)} (${t('in_days')} ${nd.days}d)</span>` : ''}
+            ${b.period_start || b.period_end ? `<span class="row-cat">📆 ${b.period_start ? fmtDate(b.period_start) : '…'} – ${b.period_end ? fmtDate(b.period_end) : '…'}</span>` : ''}
           </div>
           <div class="row-side">
             <span class="row-amount">${fmtMoney(pay ? pay.amount : b.reference_amount, b.currency)}</span>
@@ -1789,6 +1800,7 @@ function renderBillDetail(id) {
     [t('ref_lbl'), fmtMoney(b.reference_amount, b.currency)],
     [t('limit_lbl'), b.limit_amount ? fmtMoney(b.limit_amount, b.currency) : null],
     [t('next_due'), (() => { const nd = nextBillDue(b); return nd ? `${fmtDate(nd.date)} (${t('in_days')} ${nd.days}d)` : null; })()],
+    [t('period_row'), b.period_start || b.period_end ? `${b.period_start ? fmtDate(b.period_start) : '…'} – ${b.period_end ? fmtDate(b.period_end) : '…'}` : null],
     [t('method'), b.payment_method],
     [t('bank'), b.bank],
     [t('card'), b.card_last4 ? '•••• ' + b.card_last4 : null],
@@ -1853,6 +1865,11 @@ function renderBillForm(id) {
       </select>
       <label class="lbl">${t('next_due')}</label>
       <input id="b-date" type="date" value="${b && b.due_date ? b.due_date : ''}">
+      <label class="lbl">${t('period_lbl')}</label>
+      <div class="form-row">
+        <input id="b-pstart" type="date" value="${b && b.period_start ? b.period_start : ''}">
+        <input id="b-pend" type="date" value="${b && b.period_end ? b.period_end : ''}">
+      </div>
       <div class="form-row">
         <select id="b-method"><option value="">${t('method')}…</option>${PAY_METHODS.map(m => `<option value="${m}"${b && b.payment_method === m ? ' selected' : ''}>${m}</option>`).join('')}</select>
         <select id="b-country"><option value="">${t('country')}…</option>${COUNTRIES.map(c => `<option value="${c}"${b && b.country === c ? ' selected' : ''}>${flagEmoji(c)} ${c}</option>`).join('')}</select>
@@ -1877,14 +1894,16 @@ async function saveBill(id) {
   const errEl = g('b-err');
 
   if (!name) { errEl.innerHTML = `<div class="err">${t('err_fill')}</div>`; return; }
-  if (!amount || amount <= 0) { errEl.innerHTML = `<div class="err">${t('err_amount')}</div>`; return; }
+  if (g('b-amount').value.trim() !== '' && (isNaN(amount) || amount < 0)) { errEl.innerHTML = `<div class="err">${t('err_amount')}</div>`; return; }
 
   const { data: { user } } = await sb.auth.getUser();
   const row = {
     user_id: user.id, name,
     website: g('b-website').value.trim() || null,
     category: g('b-cat').value.trim() || null,
-    reference_amount: amount,
+    reference_amount: isNaN(amount) ? 0 : amount,
+    period_start: g('b-pstart').value || null,
+    period_end: g('b-pend').value || null,
     limit_amount: limit > 0 ? limit : null,
     currency: g('b-cur').value,
     due_date: ddate,
