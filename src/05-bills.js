@@ -1,15 +1,46 @@
 // Faturas — CRUD + ✓ Pago + arquivo mensal + limite + bloqueio 5 dias úteis
 let BILLS_CACHE = [];
-let ARCH_HIDDEN = localStorage.getItem('aboklar_hide_archtotal') === '1';
+const BHIDE_KEYS = {
+  month: 'aboklar_hide_billmonth',
+  archmonth: 'aboklar_hide_archtotal',
+  archyear: 'aboklar_hide_archyear'
+};
+let BHIDE = {
+  month: localStorage.getItem(BHIDE_KEYS.month) === '1',
+  archmonth: localStorage.getItem(BHIDE_KEYS.archmonth) === '1',
+  archyear: localStorage.getItem(BHIDE_KEYS.archyear) === '1'
+};
 
-function toggleArchTotal() {
-  ARCH_HIDDEN = !ARCH_HIDDEN;
-  localStorage.setItem('aboklar_hide_archtotal', ARCH_HIDDEN ? '1' : '0');
-  const card = document.getElementById('arch-total');
+function toggleBillTotal(which) {
+  BHIDE[which] = !BHIDE[which];
+  localStorage.setItem(BHIDE_KEYS[which], BHIDE[which] ? '1' : '0');
+  const card = document.getElementById('btotal-' + which);
   if (!card) return;
-  card.querySelectorAll('.total-val').forEach(el => el.classList.toggle('hidden-val', ARCH_HIDDEN));
+  card.querySelectorAll('.total-val').forEach(el => el.classList.toggle('hidden-val', BHIDE[which]));
   const eye = card.querySelector('.total-eye');
-  if (eye) eye.textContent = ARCH_HIDDEN ? '🙈' : '👁';
+  if (eye) eye.textContent = BHIDE[which] ? '🙈' : '👁';
+}
+
+function billTotalCard(which, label, byCur, base) {
+  const hid = BHIDE[which] ? ' hidden-val' : '';
+  const sec = base === 'EUR' ? 'CHF' : 'EUR';
+  const secRate = FX && FX.base === base && FX.rates[sec] ? FX.rates[sec] : null;
+  let total = 0, ok = true;
+  for (const [c, v] of Object.entries(byCur)) {
+    const conv = toBase(v, c, base);
+    if (conv === null) { ok = false; break; }
+    total += conv;
+  }
+  let inner;
+  if (ok && Object.keys(byCur).length) {
+    inner = `<span class="total-val${hid}">${fmtMoney(total, base)}</span>` +
+      (secRate ? `<span class="total-val total-sec${hid}">${fmtMoney(total * secRate, sec)}</span>` : '');
+  } else {
+    inner = Object.entries(byCur).map(([c, v]) => `<span class="total-val${hid}">${fmtMoney(v, c)}</span>`).join('') || `<span class="total-val">—</span>`;
+  }
+  return `<div class="total-card" id="btotal-${which}" onclick="toggleBillTotal('${which}')">
+    <span class="total-label">${label} <span class="total-eye">${BHIDE[which] ? '🙈' : '👁'}</span></span>
+    ${inner}</div>`;
 }
 let PAYMENTS_CACHE = [];
 let BILLS_TAB = 'bills'; // 'bills' | 'archive'
@@ -92,6 +123,8 @@ async function renderBills() {
   localStorage.setItem('aboklar_last_view', 'bills');
   localStorage.setItem('aboklar_last_section', 'bills');
   if (!ARCH_PERIOD) ARCH_PERIOD = curPeriod();
+  const base = (typeof PROFILE !== 'undefined' && PROFILE && PROFILE.currency) || 'CHF';
+  await getRates(base);
   await loadBills();
 
   const tabs = `
@@ -157,9 +190,18 @@ async function renderBills() {
       ${groupBtn('inactive', t('group_inactive'))}
     </div>`;
 
+    const monthCur = {};
+    for (const b of [...groups.due, ...groups.paid]) {
+      const cur = b.currency || 'CHF';
+      const amt = Number(paidBy[b.id] ? paidBy[b.id].amount : b.reference_amount) || 0;
+      monthCur[cur] = (monthCur[cur] || 0) + amt;
+    }
+    const monthCard = Object.keys(monthCur).length
+      ? `<div style="margin-bottom:14px">${billTotalCard('month', t('month_total'), monthCur, base)}</div>` : '';
+
     const sel = groups[BILLS_GROUP] || [];
     const list = BILLS_CACHE.length
-      ? groupBtns + (sel.length ? sel.map(billRow).join('') : `<p class="muted" style="margin-top:24px">—</p>`)
+      ? monthCard + groupBtns + (sel.length ? sel.map(billRow).join('') : `<p class="muted" style="margin-top:24px">—</p>`)
       : `<p class="muted" style="margin-top:30px">${t('no_bills')}</p>`;
 
     sectionShell(t('bills'), `
@@ -177,6 +219,16 @@ async function renderBills() {
       const b = billById[p.bill_id];
       const cur = (b && b.currency) || 'CHF';
       totals[cur] = (totals[cur] || 0) + Number(p.amount);
+    }
+
+    // total do ano do período selecionado
+    const year = ARCH_PERIOD.slice(0, 4);
+    const { data: yearPays } = await sb.from('bill_payments').select('bill_id,amount').like('period', year + '-%');
+    const yearCur = {};
+    for (const p of (yearPays || [])) {
+      const b = billById[p.bill_id];
+      const cur = (b && b.currency) || 'CHF';
+      yearCur[cur] = (yearCur[cur] || 0) + Number(p.amount);
     }
 
     pays.sort((a, b) => new Date(b.paid_at) - new Date(a.paid_at));
@@ -206,11 +258,10 @@ async function renderBills() {
         <span class="arch-title">${periodLabel(ARCH_PERIOD)}</span>
         <button class="icon-btn" onclick="shiftArch(1)">›</button>
       </div>
-      ${Object.keys(totals).length ? `
-        <div class="total-card" id="arch-total" style="margin-bottom:14px" onclick="toggleArchTotal()">
-          <span class="total-label">${t('month_total')} <span class="total-eye">${ARCH_HIDDEN ? '🙈' : '👁'}</span></span>
-          ${Object.entries(totals).map(([c, v]) => `<span class="total-val${ARCH_HIDDEN ? ' hidden-val' : ''}">${fmtMoney(v, c)}</span>`).join('')}
-        </div>` : ''}
+      <div class="totals-row" style="margin-bottom:14px">
+        ${billTotalCard('archmonth', t('month_total'), totals, base)}
+        ${billTotalCard('archyear', t('year_total') + ' ' + year, yearCur, base)}
+      </div>
       <div class="rows">${list}</div>
     `);
     setupLongPress();
