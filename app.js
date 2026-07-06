@@ -1,4 +1,4 @@
-// AboKlar — build 36 — 2026-07-06T12:25:46.904Z
+// AboKlar — build 37 — 2026-07-06T12:29:45.164Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -1088,15 +1088,29 @@ let SUBS_CACHE = [];
 let SUBS_SORT = 'date';
 let FX = null;
 
+async function fetchRatesFrom(url) {
+  try {
+    const r = await fetch(url);
+    const d = await r.json();
+    if (d && d.rates && Object.keys(d.rates).length) return d.rates;
+  } catch (e) { console.error('fx', url, e); }
+  return null;
+}
+
 async function getRates(base) {
   try {
-    const cached = JSON.parse(localStorage.getItem('aboklar_fx') || 'null');
-    if (cached && cached.base === base && Date.now() - cached.ts < 12 * 3600 * 1000) { FX = cached; return FX; }
-    const r = await fetch(`https://api.frankfurter.app/latest?from=${base}`);
-    const d = await r.json();
-    FX = { base, rates: d.rates || {}, ts: Date.now() };
-    localStorage.setItem('aboklar_fx', JSON.stringify(FX));
-  } catch (e) { console.error(e); }
+    const cached = JSON.parse(localStorage.getItem('aboklar_fx2') || 'null');
+    if (cached && cached.base === base && cached.rates && Object.keys(cached.rates).length &&
+        Date.now() - cached.ts < 12 * 3600 * 1000) { FX = cached; return FX; }
+  } catch (e) {}
+  const rates =
+    await fetchRatesFrom(`https://api.frankfurter.dev/v1/latest?base=${base}`) ||
+    await fetchRatesFrom(`https://api.frankfurter.app/latest?from=${base}`) ||
+    await fetchRatesFrom(`https://open.er-api.com/v6/latest/${base}`);
+  if (rates) {
+    FX = { base, rates, ts: Date.now() };
+    localStorage.setItem('aboklar_fx2', JSON.stringify(FX));
+  }
   return FX;
 }
 
