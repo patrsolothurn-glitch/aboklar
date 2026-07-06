@@ -1,4 +1,4 @@
-// AboKlar — build 31 — 2026-07-05T15:02:18.191Z
+// AboKlar — build 32 — 2026-07-06T05:19:17.347Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -1132,17 +1132,22 @@ async function loadSubs() {
   return SUBS_CACHE;
 }
 
-function subsTotals(subs) {
+function subsTotals(subs, base) {
+  let monthly = 0, yearly = 0, ok = true;
   const byCur = {};
   for (const s of subs) {
     if (!s.active) continue;
     const cur = s.currency || 'CHF';
-    if (!byCur[cur]) byCur[cur] = { monthly: 0, yearly: 0 };
     const amt = Number(s.amount) || 0;
-    if (s.billing_cycle === 'yearly') { byCur[cur].yearly += amt; byCur[cur].monthly += amt / 12; }
-    else { byCur[cur].monthly += amt; byCur[cur].yearly += amt * 12; }
+    const m = s.billing_cycle === 'yearly' ? amt / 12 : amt;
+    const y = s.billing_cycle === 'yearly' ? amt : amt * 12;
+    if (!byCur[cur]) byCur[cur] = { monthly: 0, yearly: 0 };
+    byCur[cur].monthly += m; byCur[cur].yearly += y;
+    const mConv = toBase(m, cur, base);
+    if (mConv === null) { ok = false; continue; }
+    monthly += mConv; yearly += toBase(y, cur, base);
   }
-  return byCur;
+  return { monthly, yearly, ok, byCur };
 }
 
 function setSubsSort(mode) { SUBS_SORT = mode; renderSubs(); }
@@ -1150,8 +1155,12 @@ function setSubsSort(mode) { SUBS_SORT = mode; renderSubs(); }
 async function renderSubs() {
   localStorage.setItem('aboklar_last_view', 'subs');
   localStorage.setItem('aboklar_last_section', 'subs');
+  const base = (typeof PROFILE !== 'undefined' && PROFILE && PROFILE.currency) || 'CHF';
   const subs = await loadSubs();
-  const totals = subsTotals(subs);
+  await getRates(base);
+  const totals = subsTotals(subs, base);
+  const sec = base === 'EUR' ? 'CHF' : 'EUR';
+  const secRate = FX && FX.base === base && FX.rates[sec] ? FX.rates[sec] : null;
 
   const sorted = [...subs].sort((a, b) => {
     if (SUBS_SORT === 'name') return a.name.localeCompare(b.name);
