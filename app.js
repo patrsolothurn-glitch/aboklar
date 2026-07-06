@@ -1,4 +1,4 @@
-// AboKlar — build 39 — 2026-07-06T19:58:29.773Z
+// AboKlar — build 40 — 2026-07-06T20:03:38.925Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
