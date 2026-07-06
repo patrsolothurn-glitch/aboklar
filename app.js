@@ -1,4 +1,4 @@
-// AboKlar — build 34 — 2026-07-06T05:42:26.948Z
+// AboKlar — build 35 — 2026-07-06T12:21:30.516Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -1076,6 +1076,25 @@ const PAY_METHODS = ['Débito', 'Cartão', 'Twint', 'Apple Pay', 'Google Pay', '
 const COUNTRIES = ['CH', 'PT', 'DE', 'FR', 'IT', 'AT', 'ES', 'NL', 'BE', 'GB', 'US'];
 let SUBS_CACHE = [];
 let SUBS_SORT = 'date';
+let FX = null;
+
+async function getRates(base) {
+  try {
+    const cached = JSON.parse(localStorage.getItem('aboklar_fx') || 'null');
+    if (cached && cached.base === base && Date.now() - cached.ts < 12 * 3600 * 1000) { FX = cached; return FX; }
+    const r = await fetch(`https://api.frankfurter.app/latest?from=${base}`);
+    const d = await r.json();
+    FX = { base, rates: d.rates || {}, ts: Date.now() };
+    localStorage.setItem('aboklar_fx', JSON.stringify(FX));
+  } catch (e) { console.error(e); }
+  return FX;
+}
+
+function toBase(amount, cur, base) {
+  if (cur === base) return amount;
+  if (!FX || FX.base !== base || !FX.rates[cur]) return null;
+  return amount / FX.rates[cur];
+}
 const HIDE_STATE = {
   monthly: localStorage.getItem('aboklar_hide_monthly') === '1',
   yearly: localStorage.getItem('aboklar_hide_yearly') === '1'
@@ -1187,17 +1206,22 @@ async function renderSubs() {
     return ra.days - rb.days;
   });
 
-  const hvM = HIDE_STATE.monthly ? ' hidden-val' : '';
-  const hvY = HIDE_STATE.yearly ? ' hidden-val' : '';
-  const totalCards = Object.keys(totals).length
-    ? `<div class="totals-row">
-        <div class="total-card" id="total-monthly" onclick="toggleTotals('monthly')">
-          <span class="total-label">${t('total_monthly')} <span class="total-eye">${HIDE_STATE.monthly ? '🙈' : '👁'}</span></span>
-          ${Object.entries(totals).map(([c, v]) => `<span class="total-val${hvM}">${fmtMoney(v.monthly, c)}</span>`).join('')}</div>
-        <div class="total-card" id="total-yearly" onclick="toggleTotals('yearly')">
-          <span class="total-label">${t('total_yearly')} <span class="total-eye">${HIDE_STATE.yearly ? '🙈' : '👁'}</span></span>
-          ${Object.entries(totals).map(([c, v]) => `<span class="total-val${hvY}">${fmtMoney(v.yearly, c)}</span>`).join('')}</div>
-      </div>` : '';
+  const totalCard = (which, val) => {
+    const hid = HIDE_STATE[which] ? ' hidden-val' : '';
+    let inner;
+    if (totals.ok) {
+      inner = `<span class="total-val${hid}">${fmtMoney(val, base)}</span>` +
+        (secRate ? `<span class="total-val total-sec${hid}">${fmtMoney(val * secRate, sec)}</span>` : '');
+    } else {
+      inner = Object.entries(totals.byCur).map(([c, v]) =>
+        `<span class="total-val${hid}">${fmtMoney(which === 'monthly' ? v.monthly : v.yearly, c)}</span>`).join('');
+    }
+    return `<div class="total-card" id="total-${which}" onclick="toggleTotals('${which}')">
+      <span class="total-label">${t(which === 'monthly' ? 'total_monthly' : 'total_yearly')} <span class="total-eye">${HIDE_STATE[which] ? '🙈' : '👁'}</span></span>
+      ${inner}</div>`;
+  };
+  const totalCards = subs.length
+    ? `<div class="totals-row">${totalCard('monthly', totals.monthly)}${totalCard('yearly', totals.yearly)}</div>` : '';
 
   const list = sorted.length
     ? sorted.map(s => {
