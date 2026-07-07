@@ -55,6 +55,39 @@ let ARCH_VIEW = 'year'; // 'year' | 'month'
 function shiftArchYear(d) { ARCH_YEAR = String(parseInt(ARCH_YEAR, 10) + d); renderBills(); }
 function openArchMonth(p) { ARCH_PERIOD = p; ARCH_VIEW = 'month'; renderBills(); }
 function backToYear() { ARCH_VIEW = 'year'; renderBills(); }
+let ARCH_SORT = 'date'; // 'date' | 'name'
+function setArchSort(m) { ARCH_SORT = m; renderBills(); }
+
+function csvEscape(v) {
+  v = String(v == null ? '' : v);
+  return /[";\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+}
+
+async function exportArch(scope) {
+  // scope: 'YYYY' (ano) ou 'YYYY-MM' (mês)
+  const like = scope.length === 4 ? scope + '-%' : scope;
+  const q = sb.from('bill_payments').select('bill_id,amount,period,paid_at');
+  const { data: pays } = scope.length === 4 ? await q.like('period', like) : await q.eq('period', scope);
+  const billById = {};
+  for (const b of BILLS_CACHE) billById[b.id] = b;
+  const rows = (pays || []).sort((a, b) => a.period.localeCompare(b.period) || new Date(a.paid_at) - new Date(b.paid_at));
+  const header = [t('csv_bill'), t('csv_paid'), t('csv_period'), t('csv_amount'), t('csv_currency')].join(';');
+  const lines = rows.map(p => {
+    const b = billById[p.bill_id] || {};
+    return [csvEscape(b.name || '?'), fmtDate(p.paid_at), p.period, Number(p.amount).toFixed(2), b.currency || 'CHF'].join(';');
+  });
+  const csv = '\ufeff' + header + '\n' + lines.join('\n');
+  const filename = `aboklar-${scope}.csv`;
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const file = new File([blob], filename, { type: 'text/csv' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: 'AboKlar ' + scope }); return; } catch (e) { if (e.name === 'AbortError') return; }
+  }
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+}
 const MONTHS_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
 function curPeriod() {
@@ -266,6 +299,7 @@ async function renderBills() {
           <button class="icon-btn" onclick="shiftArchYear(1)">›</button>
         </div>
         <div style="margin-bottom:14px">${billTotalCard('archyear', t('year_total') + ' ' + year, yearCur, base)}</div>
+        <button class="btn-secondary" style="width:100%;margin-bottom:14px" onclick="exportArch('${year}')">${t('export_btn')} · ${year}</button>
         <div class="rows">${rows || `<p class="muted" style="margin-top:24px">${t('no_payments')}</p>`}</div>
       `);
     } else {
@@ -277,7 +311,11 @@ async function renderBills() {
         totals[cur] = (totals[cur] || 0) + Number(p.amount);
       }
 
-      pays.sort((a, b) => new Date(b.paid_at) - new Date(a.paid_at));
+      if (ARCH_SORT === 'name') {
+        pays.sort((a, b) => ((billById[a.bill_id] || {}).name || '').localeCompare((billById[b.bill_id] || {}).name || ''));
+      } else {
+        pays.sort((a, b) => new Date(b.paid_at) - new Date(a.paid_at));
+      }
       const list = pays.length
         ? pays.map(p => {
             const b = billById[p.bill_id] || { name: '?', currency: 'CHF' };
@@ -308,6 +346,11 @@ async function renderBills() {
           </span>
         </div>
         <div style="margin-bottom:14px">${billTotalCard('archmonth', t('month_total'), totals, base)}</div>
+        <div class="seg" style="margin-bottom:14px">
+          <button class="seg-btn${ARCH_SORT === 'date' ? ' on' : ''}" onclick="setArchSort('date')">${t('sort_date')}</button>
+          <button class="seg-btn${ARCH_SORT === 'name' ? ' on' : ''}" onclick="setArchSort('name')">${t('sort_name')}</button>
+        </div>
+        <button class="btn-secondary" style="width:100%;margin-bottom:14px" onclick="exportArch('${ARCH_PERIOD}')">${t('export_btn')} · ${periodLabel(ARCH_PERIOD)}</button>
         <div class="rows">${list}</div>
       `);
       setupLongPress();
