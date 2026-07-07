@@ -63,7 +63,24 @@ function csvEscape(v) {
   return /[";\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
 }
 
-async function exportArch(scope) {
+function exportArch(scope) {
+  const modal = document.createElement('div');
+  modal.className = 'modal-bg';
+  modal.innerHTML = `
+    <div class="modal">
+      <div class="modal-title" style="margin-bottom:12px">${t('export_btn')}</div>
+      <div class="form">
+        <label class="lbl">${t('export_name_lbl')}</label>
+        <input id="exp-name" type="text" value="aboklar-${scope}">
+        <button class="btn-primary" onclick="doExportArch('${scope}', document.getElementById('exp-name').value); this.closest('.modal-bg').remove()">${t('export_btn')}</button>
+        <button class="btn-secondary" onclick="this.closest('.modal-bg').remove()">${t('cancel')}</button>
+      </div>
+    </div>`;
+  modal.onclick = e => { if (e.target === modal) modal.remove(); };
+  document.body.appendChild(modal);
+}
+
+async function doExportArch(scope, rawName) {
   // scope: 'YYYY' (ano) ou 'YYYY-MM' (mês)
   const like = scope.length === 4 ? scope + '-%' : scope;
   const q = sb.from('bill_payments').select('bill_id,amount,period,paid_at');
@@ -77,7 +94,9 @@ async function exportArch(scope) {
     return [csvEscape(b.name || '?'), fmtDate(p.paid_at), p.period, Number(p.amount).toFixed(2), b.currency || 'CHF'].join(';');
   });
   const csv = '\ufeff' + header + '\n' + lines.join('\n');
-  const filename = `aboklar-${scope}.csv`;
+  let name = (rawName || `aboklar-${scope}`).trim().replace(/[\\/:*?"<>|]/g, '-');
+  if (!name) name = `aboklar-${scope}`;
+  const filename = name.toLowerCase().endsWith('.csv') ? name : name + '.csv';
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
   const file = new File([blob], filename, { type: 'text/csv' });
   if (navigator.canShare && navigator.canShare({ files: [file] })) {

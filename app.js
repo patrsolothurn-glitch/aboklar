@@ -1,4 +1,4 @@
-// AboKlar — build 42 — 2026-07-07T02:39:18.868Z
+// AboKlar — build 43 — 2026-07-07T02:44:03.936Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -136,6 +136,7 @@ const I18N = {
     no_payments: 'Sem pagamentos neste mês.',
     month_total: 'Total do mês',
     pay_count: 'pagamentos',
+    export_name_lbl: 'Nome do ficheiro',
     export_btn: '📤 Exportar / Enviar',
     csv_bill: 'Fatura',
     csv_paid: 'Data pagamento',
@@ -309,6 +310,7 @@ const I18N = {
     no_payments: 'Keine Zahlungen in diesem Monat.',
     month_total: 'Monatstotal',
     pay_count: 'Zahlungen',
+    export_name_lbl: 'Dateiname',
     export_btn: '📤 Exportieren / Senden',
     csv_bill: 'Rechnung',
     csv_paid: 'Zahlungsdatum',
@@ -482,6 +484,7 @@ const I18N = {
     no_payments: 'Aucun paiement ce mois-ci.',
     month_total: 'Total du mois',
     pay_count: 'paiements',
+    export_name_lbl: 'Nom du fichier',
     export_btn: '📤 Exporter / Envoyer',
     csv_bill: 'Facture',
     csv_paid: 'Date de paiement',
@@ -655,6 +658,7 @@ const I18N = {
     no_payments: 'Nessun pagamento questo mese.',
     month_total: 'Totale del mese',
     pay_count: 'pagamenti',
+    export_name_lbl: 'Nome del file',
     export_btn: '📤 Esporta / Invia',
     csv_bill: 'Fattura',
     csv_paid: 'Data pagamento',
@@ -828,6 +832,7 @@ const I18N = {
     no_payments: 'No payments this month.',
     month_total: 'Month total',
     pay_count: 'payments',
+    export_name_lbl: 'File name',
     export_btn: '📤 Export / Send',
     csv_bill: 'Bill',
     csv_paid: 'Payment date',
@@ -1522,7 +1527,24 @@ function csvEscape(v) {
   return /[";\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
 }
 
-async function exportArch(scope) {
+function exportArch(scope) {
+  const modal = document.createElement('div');
+  modal.className = 'modal-bg';
+  modal.innerHTML = `
+    <div class="modal">
+      <div class="modal-title" style="margin-bottom:12px">${t('export_btn')}</div>
+      <div class="form">
+        <label class="lbl">${t('export_name_lbl')}</label>
+        <input id="exp-name" type="text" value="aboklar-${scope}">
+        <button class="btn-primary" onclick="doExportArch('${scope}', document.getElementById('exp-name').value); this.closest('.modal-bg').remove()">${t('export_btn')}</button>
+        <button class="btn-secondary" onclick="this.closest('.modal-bg').remove()">${t('cancel')}</button>
+      </div>
+    </div>`;
+  modal.onclick = e => { if (e.target === modal) modal.remove(); };
+  document.body.appendChild(modal);
+}
+
+async function doExportArch(scope, rawName) {
   // scope: 'YYYY' (ano) ou 'YYYY-MM' (mês)
   const like = scope.length === 4 ? scope + '-%' : scope;
   const q = sb.from('bill_payments').select('bill_id,amount,period,paid_at');
@@ -1536,7 +1558,9 @@ async function exportArch(scope) {
     return [csvEscape(b.name || '?'), fmtDate(p.paid_at), p.period, Number(p.amount).toFixed(2), b.currency || 'CHF'].join(';');
   });
   const csv = '\ufeff' + header + '\n' + lines.join('\n');
-  const filename = `aboklar-${scope}.csv`;
+  let name = (rawName || `aboklar-${scope}`).trim().replace(/[\\/:*?"<>|]/g, '-');
+  if (!name) name = `aboklar-${scope}`;
+  const filename = name.toLowerCase().endsWith('.csv') ? name : name + '.csv';
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
   const file = new File([blob], filename, { type: 'text/csv' });
   if (navigator.canShare && navigator.canShare({ files: [file] })) {
