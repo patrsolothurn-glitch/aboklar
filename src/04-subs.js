@@ -220,6 +220,9 @@ function renderSubDetail(id) {
     [t('bank'), s.bank],
     [t('card'), s.card_last4 ? '•••• ' + s.card_last4 : null],
     [t('country'), s.country ? `${flagEmoji(s.country)} ${s.country}` : null],
+    [t('nif_lbl'), s.nif],
+    [t('phone_lbl'), s.phone ? `<a href="tel:${s.phone}">${s.phone}</a>` : null],
+    [t('email'), s.email ? `<a href="mailto:${s.email}">${s.email}</a>` : null],
     [t('next_charge'), nr ? `${fmtDate(nr.date)} (${t('in_days')} ${nr.days}d)` : null],
     [t('status'), s.active ? t('active_lbl') : t('inactive_lbl')]
   ].filter(r => r[1]);
@@ -275,6 +278,9 @@ function renderSubForm(id) {
       </div>
       <input id="s-bank" type="text" placeholder="${t('bank_ph')}" value="${esc(s && s.bank)}">
       <input id="s-card" type="text" inputmode="numeric" maxlength="4" placeholder="${t('card_ph')}" value="${esc(s && s.card_last4)}">
+      <input id="s-nif" type="text" placeholder="${t('nif_ph')}" value="${esc(s && s.nif)}">
+      <input id="s-phone" type="tel" placeholder="${t('phone_ph')}" value="${esc(s && s.phone)}">
+      <input id="s-email" type="email" placeholder="${t('email_ph')}" value="${esc(s && s.email)}">
       <label class="lbl">${t('cycle')}</label>
       <div class="seg">
         <button type="button" class="seg-btn${cycle === 'monthly' ? ' on' : ''}" onclick="segCycle(this,'monthly')">${t('monthly')}</button>
@@ -318,6 +324,9 @@ async function saveSub(id) {
     country: g('s-country').value || null,
     bank: g('s-bank').value.trim() || null,
     card_last4: g('s-card').value.trim() || null,
+    nif: g('s-nif').value.trim() || null,
+    phone: g('s-phone').value.trim() || null,
+    email: g('s-email').value.trim() || null,
     billing_cycle: cycle,
     renewal_day: cycle === 'monthly' && rdate ? parseInt(rdate.slice(8, 10), 10) : null,
     renewal_date: rdate

@@ -1,4 +1,4 @@
-// AboKlar — build 43 — 2026-07-07T02:44:03.936Z
+// AboKlar — build 44 — 2026-07-07T02:47:28.959Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -136,6 +136,11 @@ const I18N = {
     no_payments: 'Sem pagamentos neste mês.',
     month_total: 'Total do mês',
     pay_count: 'pagamentos',
+    nif_lbl: 'NIF',
+    nif_ph: 'NIF — Nº Identificação Fiscal (opcional)',
+    phone_lbl: 'Telefone',
+    phone_ph: 'Telefone (opcional)',
+    email_ph: 'E-mail (opcional)',
     export_name_lbl: 'Nome do ficheiro',
     export_btn: '📤 Exportar / Enviar',
     csv_bill: 'Fatura',
@@ -310,6 +315,11 @@ const I18N = {
     no_payments: 'Keine Zahlungen in diesem Monat.',
     month_total: 'Monatstotal',
     pay_count: 'Zahlungen',
+    nif_lbl: 'Steuernummer',
+    nif_ph: 'Steuernummer / UID (optional)',
+    phone_lbl: 'Telefon',
+    phone_ph: 'Telefon (optional)',
+    email_ph: 'E-Mail (optional)',
     export_name_lbl: 'Dateiname',
     export_btn: '📤 Exportieren / Senden',
     csv_bill: 'Rechnung',
@@ -484,6 +494,11 @@ const I18N = {
     no_payments: 'Aucun paiement ce mois-ci.',
     month_total: 'Total du mois',
     pay_count: 'paiements',
+    nif_lbl: 'NIF',
+    nif_ph: 'NIF — Nº fiscal (optionnel)',
+    phone_lbl: 'Téléphone',
+    phone_ph: 'Téléphone (optionnel)',
+    email_ph: 'E-mail (optionnel)',
     export_name_lbl: 'Nom du fichier',
     export_btn: '📤 Exporter / Envoyer',
     csv_bill: 'Facture',
@@ -658,6 +673,11 @@ const I18N = {
     no_payments: 'Nessun pagamento questo mese.',
     month_total: 'Totale del mese',
     pay_count: 'pagamenti',
+    nif_lbl: 'Codice fiscale',
+    nif_ph: 'Codice fiscale / P.IVA (opzionale)',
+    phone_lbl: 'Telefono',
+    phone_ph: 'Telefono (opzionale)',
+    email_ph: 'E-mail (opzionale)',
     export_name_lbl: 'Nome del file',
     export_btn: '📤 Esporta / Invia',
     csv_bill: 'Fattura',
@@ -832,6 +852,11 @@ const I18N = {
     no_payments: 'No payments this month.',
     month_total: 'Month total',
     pay_count: 'payments',
+    nif_lbl: 'Tax ID',
+    nif_ph: 'Tax ID (optional)',
+    phone_lbl: 'Phone',
+    phone_ph: 'Phone (optional)',
+    email_ph: 'Email (optional)',
     export_name_lbl: 'File name',
     export_btn: '📤 Export / Send',
     csv_bill: 'Bill',
@@ -1342,6 +1367,9 @@ function renderSubDetail(id) {
     [t('bank'), s.bank],
     [t('card'), s.card_last4 ? '•••• ' + s.card_last4 : null],
     [t('country'), s.country ? `${flagEmoji(s.country)} ${s.country}` : null],
+    [t('nif_lbl'), s.nif],
+    [t('phone_lbl'), s.phone ? `<a href="tel:${s.phone}">${s.phone}</a>` : null],
+    [t('email'), s.email ? `<a href="mailto:${s.email}">${s.email}</a>` : null],
     [t('next_charge'), nr ? `${fmtDate(nr.date)} (${t('in_days')} ${nr.days}d)` : null],
     [t('status'), s.active ? t('active_lbl') : t('inactive_lbl')]
   ].filter(r => r[1]);
@@ -1397,6 +1425,9 @@ function renderSubForm(id) {
       </div>
       <input id="s-bank" type="text" placeholder="${t('bank_ph')}" value="${esc(s && s.bank)}">
       <input id="s-card" type="text" inputmode="numeric" maxlength="4" placeholder="${t('card_ph')}" value="${esc(s && s.card_last4)}">
+      <input id="s-nif" type="text" placeholder="${t('nif_ph')}" value="${esc(s && s.nif)}">
+      <input id="s-phone" type="tel" placeholder="${t('phone_ph')}" value="${esc(s && s.phone)}">
+      <input id="s-email" type="email" placeholder="${t('email_ph')}" value="${esc(s && s.email)}">
       <label class="lbl">${t('cycle')}</label>
       <div class="seg">
         <button type="button" class="seg-btn${cycle === 'monthly' ? ' on' : ''}" onclick="segCycle(this,'monthly')">${t('monthly')}</button>
@@ -1440,6 +1471,9 @@ async function saveSub(id) {
     country: g('s-country').value || null,
     bank: g('s-bank').value.trim() || null,
     card_last4: g('s-card').value.trim() || null,
+    nif: g('s-nif').value.trim() || null,
+    phone: g('s-phone').value.trim() || null,
+    email: g('s-email').value.trim() || null,
     billing_cycle: cycle,
     renewal_day: cycle === 'monthly' && rdate ? parseInt(rdate.slice(8, 10), 10) : null,
     renewal_date: rdate
@@ -1975,6 +2009,9 @@ function renderBillDetail(id) {
     [t('bank'), b.bank],
     [t('card'), b.card_last4 ? '•••• ' + b.card_last4 : null],
     [t('country'), b.country ? `${flagEmoji(b.country)} ${b.country}` : null],
+    [t('nif_lbl'), b.nif],
+    [t('phone_lbl'), b.phone ? `<a href="tel:${b.phone}">${b.phone}</a>` : null],
+    [t('email'), b.email ? `<a href="mailto:${b.email}">${b.email}</a>` : null],
     [t('notes_lbl'), b.notes],
     [t('status'), b.active ? t('active_lbl') : t('inactive_lbl')]
   ].filter(r => r[1]);
@@ -2046,6 +2083,9 @@ function renderBillForm(id) {
       </div>
       <input id="b-bank" type="text" placeholder="${t('bank_ph')}" value="${esc(b && b.bank)}">
       <input id="b-card" type="text" inputmode="numeric" maxlength="4" placeholder="${t('card_ph')}" value="${esc(b && b.card_last4)}">
+      <input id="b-nif" type="text" placeholder="${t('nif_ph')}" value="${esc(b && b.nif)}">
+      <input id="b-phone" type="tel" placeholder="${t('phone_ph')}" value="${esc(b && b.phone)}">
+      <input id="b-email" type="email" placeholder="${t('email_ph')}" value="${esc(b && b.email)}">
       <input id="b-notes" type="text" placeholder="${t('notes_ph')}" value="${esc(b && b.notes)}">
       <div id="b-err"></div>
       <button class="btn-primary" onclick="saveBill(${isEdit ? `'${b.id}'` : 'null'})">${t('save')}</button>
@@ -2084,7 +2124,10 @@ async function saveBill(id) {
     payment_method: g('b-method').value || null,
     country: g('b-country').value || null,
     bank: g('b-bank').value.trim() || null,
-    card_last4: g('b-card').value.trim() || null
+    card_last4: g('b-card').value.trim() || null,
+    nif: g('b-nif').value.trim() || null,
+    phone: g('b-phone').value.trim() || null,
+    email: g('b-email').value.trim() || null
   };
 
   let error;
@@ -2140,6 +2183,9 @@ async function renderSettings() {
       <label class="lbl">${t('set_name')}</label>
       <input id="set-name" type="text" value="${(p.display_name || '').replace(/"/g, '&quot;')}">
 
+      <label class="lbl">${t('nif_lbl')}</label>
+      <input id="set-nif" type="text" placeholder="${t('nif_ph')}" value="${(p.nif || '').replace(/"/g, '&quot;')}">
+
       <label class="lbl">${t('set_language')}</label>
       <select id="set-lang">
         ${LANGS.map(l => `<option value="${l.code}"${p.language === l.code ? ' selected' : ''}${I18N[l.code] ? '' : ' disabled'}>${l.label}${I18N[l.code] ? '' : ' ' + t('lang_soon')}</option>`).join('')}
@@ -2179,18 +2225,19 @@ function setTheme(btn, mode) {
 async function saveSettings() {
   const { data: { user } } = await sb.auth.getUser();
   const display_name = document.getElementById('set-name').value.trim();
+  const nif = document.getElementById('set-nif').value.trim() || null;
   const language = document.getElementById('set-lang').value;
   const currency = document.getElementById('set-cur').value;
   const theme = document.getElementById('set-theme').value;
 
   const { error } = await sb.from('profiles')
-    .update({ display_name, language, currency, theme }).eq('id', user.id);
+    .update({ display_name, nif, language, currency, theme }).eq('id', user.id);
   if (error) { console.error(error); document.getElementById('set-msg').innerHTML = `<div class="err">${t('err_generic')}</div>`; return; }
 
   // atualizar também os metadados de auth (para o "Olá, X")
   await sb.auth.updateUser({ data: { display_name } });
 
-  PROFILE = { ...PROFILE, display_name, language, currency, theme };
+  PROFILE = { ...PROFILE, display_name, nif, language, currency, theme };
   if (I18N[language]) LANG = language;
   applyTheme(theme);
   document.getElementById('set-msg').innerHTML = `<div class="ok">${t('saved')}</div>`;

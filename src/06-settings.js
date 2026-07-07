@@ -34,6 +34,9 @@ async function renderSettings() {
       <label class="lbl">${t('set_name')}</label>
       <input id="set-name" type="text" value="${(p.display_name || '').replace(/"/g, '&quot;')}">
 
+      <label class="lbl">${t('nif_lbl')}</label>
+      <input id="set-nif" type="text" placeholder="${t('nif_ph')}" value="${(p.nif || '').replace(/"/g, '&quot;')}">
+
       <label class="lbl">${t('set_language')}</label>
       <select id="set-lang">
         ${LANGS.map(l => `<option value="${l.code}"${p.language === l.code ? ' selected' : ''}${I18N[l.code] ? '' : ' disabled'}>${l.label}${I18N[l.code] ? '' : ' ' + t('lang_soon')}</option>`).join('')}
@@ -73,18 +76,19 @@ function setTheme(btn, mode) {
 async function saveSettings() {
   const { data: { user } } = await sb.auth.getUser();
   const display_name = document.getElementById('set-name').value.trim();
+  const nif = document.getElementById('set-nif').value.trim() || null;
   const language = document.getElementById('set-lang').value;
   const currency = document.getElementById('set-cur').value;
   const theme = document.getElementById('set-theme').value;
 
   const { error } = await sb.from('profiles')
-    .update({ display_name, language, currency, theme }).eq('id', user.id);
+    .update({ display_name, nif, language, currency, theme }).eq('id', user.id);
   if (error) { console.error(error); document.getElementById('set-msg').innerHTML = `<div class="err">${t('err_generic')}</div>`; return; }
 
   // atualizar também os metadados de auth (para o "Olá, X")
   await sb.auth.updateUser({ data: { display_name } });
 
-  PROFILE = { ...PROFILE, display_name, language, currency, theme };
+  PROFILE = { ...PROFILE, display_name, nif, language, currency, theme };
   if (I18N[language]) LANG = language;
   applyTheme(theme);
   document.getElementById('set-msg').innerHTML = `<div class="ok">${t('saved')}</div>`;

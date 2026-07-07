@@ -511,6 +511,9 @@ function renderBillDetail(id) {
     [t('bank'), b.bank],
     [t('card'), b.card_last4 ? '•••• ' + b.card_last4 : null],
     [t('country'), b.country ? `${flagEmoji(b.country)} ${b.country}` : null],
+    [t('nif_lbl'), b.nif],
+    [t('phone_lbl'), b.phone ? `<a href="tel:${b.phone}">${b.phone}</a>` : null],
+    [t('email'), b.email ? `<a href="mailto:${b.email}">${b.email}</a>` : null],
     [t('notes_lbl'), b.notes],
     [t('status'), b.active ? t('active_lbl') : t('inactive_lbl')]
   ].filter(r => r[1]);
@@ -582,6 +585,9 @@ function renderBillForm(id) {
       </div>
       <input id="b-bank" type="text" placeholder="${t('bank_ph')}" value="${esc(b && b.bank)}">
       <input id="b-card" type="text" inputmode="numeric" maxlength="4" placeholder="${t('card_ph')}" value="${esc(b && b.card_last4)}">
+      <input id="b-nif" type="text" placeholder="${t('nif_ph')}" value="${esc(b && b.nif)}">
+      <input id="b-phone" type="tel" placeholder="${t('phone_ph')}" value="${esc(b && b.phone)}">
+      <input id="b-email" type="email" placeholder="${t('email_ph')}" value="${esc(b && b.email)}">
       <input id="b-notes" type="text" placeholder="${t('notes_ph')}" value="${esc(b && b.notes)}">
       <div id="b-err"></div>
       <button class="btn-primary" onclick="saveBill(${isEdit ? `'${b.id}'` : 'null'})">${t('save')}</button>
@@ -620,7 +626,10 @@ async function saveBill(id) {
     payment_method: g('b-method').value || null,
     country: g('b-country').value || null,
     bank: g('b-bank').value.trim() || null,
-    card_last4: g('b-card').value.trim() || null
+    card_last4: g('b-card').value.trim() || null,
+    nif: g('b-nif').value.trim() || null,
+    phone: g('b-phone').value.trim() || null,
+    email: g('b-email').value.trim() || null
   };
 
   let error;
