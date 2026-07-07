@@ -63,6 +63,64 @@ function csvEscape(v) {
   return /[";\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
 }
 
+let JSQR_LOADING = null;
+function loadJsQR() {
+  if (window.jsQR) return Promise.resolve();
+  if (JSQR_LOADING) return JSQR_LOADING;
+  JSQR_LOADING = new Promise((res, rej) => {
+    const sc = document.createElement('script');
+    sc.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js';
+    sc.onload = res; sc.onerror = rej;
+    document.head.appendChild(sc);
+  });
+  return JSQR_LOADING;
+}
+
+async function scanBillPhoto(input) {
+  const file = input.files && input.files[0];
+  input.value = '';
+  if (!file) return;
+  showToast(t('scan_reading'));
+  try {
+    await loadJsQR();
+    const bmp = await createImageBitmap(file);
+    let code = null;
+    for (const maxSide of [1600, 1000, 2200]) {
+      const scale = Math.min(1, maxSide / Math.max(bmp.width, bmp.height));
+      const w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale);
+      const cv = document.createElement('canvas');
+      cv.width = w; cv.height = h;
+      const ctx = cv.getContext('2d');
+      ctx.drawImage(bmp, 0, 0, w, h);
+      const img = ctx.getImageData(0, 0, w, h);
+      code = jsQR(img.data, w, h);
+      if (code && code.data) break;
+    }
+    if (!code || !code.data) { showToast(t('scan_no_qr')); return; }
+    fillFromQR(code.data);
+  } catch (e) { console.error(e); showToast(t('err_generic')); }
+}
+
+function fillFromQR(data) {
+  const g = i => document.getElementById(i);
+  const setVal = (id, v) => { const el = g(id); if (el && v) el.value = v; };
+  const L = data.split(/\r?\n/);
+  if (L[0] === 'SPC') {
+    // Swiss QR-bill (SPC v2)
+    setVal('b-name', L[5]);
+    if (L[18]) setVal('b-amount', L[18]);
+    if (L[19] && g('b-cur') && [...g('b-cur').options].some(o => o.value === L[19])) g('b-cur').value = L[19];
+    if (L[10] && g('b-country') && [...g('b-country').options].some(o => o.value === L[10])) g('b-country').value = L[10];
+    if (L[28]) setVal('b-ref', L[28]);
+    if (L[29]) setVal('b-notes', L[29]);
+    showToast(t('scan_ok'));
+  } else {
+    // QR genérico: guarda o conteúdo nas notas para não se perder
+    setVal('b-notes', data.slice(0, 200));
+    showToast(t('scan_ok'));
+  }
+}
+
 function exportArch(scope) {
   const modal = document.createElement('div');
   modal.className = 'modal-bg';
@@ -556,6 +614,8 @@ function renderBillForm(id) {
 
   sectionShell(isEdit ? t('edit') : t('new'), `
     <div class="form">
+      <button type="button" class="btn-secondary" onclick="document.getElementById('b-scan').click()">${t('scan_btn')}</button>
+      <input id="b-scan" type="file" accept="image/*" capture="environment" style="display:none" onchange="scanBillPhoto(this)">
       <input id="b-name" type="text" placeholder="${t('bill_name_ph')}" value="${esc(b && b.name)}">
       <input id="b-website" type="text" placeholder="${t('website_ph')}" value="${esc(b && b.website)}">
       <input id="b-cat" type="text" placeholder="${t('category_ph')}" value="${esc(b && b.category)}">
