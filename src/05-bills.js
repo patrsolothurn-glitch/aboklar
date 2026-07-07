@@ -15,10 +15,13 @@ function toggleBillTotal(which) {
   BHIDE[which] = !BHIDE[which];
   localStorage.setItem(BHIDE_KEYS[which], BHIDE[which] ? '1' : '0');
   const card = document.getElementById('btotal-' + which);
-  if (!card) return;
-  card.querySelectorAll('.total-val').forEach(el => el.classList.toggle('hidden-val', BHIDE[which]));
-  const eye = card.querySelector('.total-eye');
-  if (eye) eye.textContent = BHIDE[which] ? '🙈' : '👁';
+  if (card) {
+    card.querySelectorAll('.total-val').forEach(el => el.classList.toggle('hidden-val', BHIDE[which]));
+    const eye = card.querySelector('.total-eye');
+    if (eye) eye.textContent = BHIDE[which] ? '🙈' : '👁';
+  }
+  if (which === 'archyear')
+    document.querySelectorAll('.arch-mrow .row-amount').forEach(el => el.classList.toggle('hidden-val', BHIDE[which]));
 }
 
 function billTotalCard(which, label, byCur, base) {
@@ -47,6 +50,11 @@ let BILLS_TAB = 'bills'; // 'bills' | 'archive'
 let BILLS_GROUP = 'due'; // 'due' | 'paid' | 'later' | 'inactive'
 function setBillsGroup(g) { BILLS_GROUP = g; renderBills(); }
 let ARCH_PERIOD = null;  // 'YYYY-MM'
+let ARCH_YEAR = null;
+let ARCH_VIEW = 'year'; // 'year' | 'month'
+function shiftArchYear(d) { ARCH_YEAR = String(parseInt(ARCH_YEAR, 10) + d); renderBills(); }
+function openArchMonth(p) { ARCH_PERIOD = p; ARCH_VIEW = 'month'; renderBills(); }
+function backToYear() { ARCH_VIEW = 'year'; renderBills(); }
 const MONTHS_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
 function curPeriod() {
@@ -116,7 +124,7 @@ async function loadPayments(period) {
   return PAYMENTS_CACHE;
 }
 
-function setBillsTab(tab) { BILLS_TAB = tab; renderBills(); }
+function setBillsTab(tab) { BILLS_TAB = tab; if (tab === 'archive') ARCH_VIEW = 'year'; renderBills(); }
 function shiftArch(delta) { ARCH_PERIOD = shiftPeriod(ARCH_PERIOD, delta); renderBills(); }
 
 async function renderBills() {
@@ -211,61 +219,99 @@ async function renderBills() {
       <div class="rows">${list}</div>
     `);
   } else {
-    const pays = await loadPayments(ARCH_PERIOD);
+    if (!ARCH_YEAR) ARCH_YEAR = ARCH_PERIOD.slice(0, 4);
     const billById = {};
     for (const b of BILLS_CACHE) billById[b.id] = b;
 
-    const totals = {};
-    for (const p of pays) {
-      const b = billById[p.bill_id];
-      const cur = (b && b.currency) || 'CHF';
-      totals[cur] = (totals[cur] || 0) + Number(p.amount);
-    }
+    if (ARCH_VIEW === 'year') {
+      const year = ARCH_YEAR;
+      const { data: yearPays } = await sb.from('bill_payments').select('bill_id,amount,period').like('period', year + '-%');
+      const yearCur = {};
+      const byMonth = {};
+      for (const p of (yearPays || [])) {
+        const b = billById[p.bill_id];
+        const cur = (b && b.currency) || 'CHF';
+        yearCur[cur] = (yearCur[cur] || 0) + Number(p.amount);
+        if (!byMonth[p.period]) byMonth[p.period] = { count: 0, byCur: {} };
+        byMonth[p.period].count++;
+        byMonth[p.period].byCur[cur] = (byMonth[p.period].byCur[cur] || 0) + Number(p.amount);
+      }
 
-    // total do ano do período selecionado
-    const year = ARCH_PERIOD.slice(0, 4);
-    const { data: yearPays } = await sb.from('bill_payments').select('bill_id,amount').like('period', year + '-%');
-    const yearCur = {};
-    for (const p of (yearPays || [])) {
-      const b = billById[p.bill_id];
-      const cur = (b && b.currency) || 'CHF';
-      yearCur[cur] = (yearCur[cur] || 0) + Number(p.amount);
-    }
-
-    pays.sort((a, b) => new Date(b.paid_at) - new Date(a.paid_at));
-    const list = pays.length
-      ? pays.map(p => {
-          const b = billById[p.bill_id] || { name: '?', currency: 'CHF' };
-          const over = b.limit_amount && Number(p.amount) > Number(b.limit_amount);
-          const bd = businessDaysSince(p.paid_at);
-          const locked = bd > 5;
-          return `
-        <div class="row-card pay-row" data-pid="${p.id}" data-locked="${locked ? '1' : '0'}"
-             onclick="payTap('${p.id}', ${locked})">
+      const months = t('months');
+      const hid = BHIDE.archyear ? ' hidden-val' : '';
+      const rows = Object.keys(byMonth).sort().reverse().map(per => {
+        const mi = parseInt(per.slice(5), 10) - 1;
+        let tot = 0, ok = true;
+        for (const [c, v] of Object.entries(byMonth[per].byCur)) {
+          const x = toBase(v, c, base);
+          if (x === null) { ok = false; break; }
+          tot += x;
+        }
+        const amt = ok ? fmtMoney(tot, base)
+          : Object.entries(byMonth[per].byCur).map(([c, v]) => fmtMoney(v, c)).join(' + ');
+        return `<button class="row-card arch-mrow" onclick="openArchMonth('${per}')">
           <div class="row-main">
-            <span class="row-name">${b.name} ${locked ? '🔒' : ''}</span>
-            <span class="row-cat">${t('paid_on')} ${fmtDate(p.paid_at)}</span>
-            ${over ? `<span class="row-cat over">⚠️ ${t('over_limit')} (${fmtMoney(b.limit_amount, b.currency)})</span>` : ''}
+            <span class="row-name">📅 ${months[mi]}</span>
+            <span class="row-cat">${byMonth[per].count} ${t('pay_count')}</span>
           </div>
-          <span class="row-amount${over ? ' over' : ''}">${fmtMoney(p.amount, b.currency)}</span>
-        </div>`;
-        }).join('')
-      : `<p class="muted" style="margin-top:30px">${t('no_payments')}</p>`;
+          <span class="row-amount${hid}">${amt}</span>
+        </button>`;
+      }).join('');
 
-    sectionShell(t('bills'), `
-      ${tabs}
-      <div class="arch-nav">
-        <button class="icon-btn" onclick="shiftArch(-1)">‹</button>
-        <span class="arch-title">${periodLabel(ARCH_PERIOD)}</span>
-        <button class="icon-btn" onclick="shiftArch(1)">›</button>
-      </div>
-      <div class="totals-row" style="margin-bottom:14px">
-        ${billTotalCard('archmonth', t('month_total'), totals, base)}
-        ${billTotalCard('archyear', t('year_total') + ' ' + year, yearCur, base)}
-      </div>
-      <div class="rows">${list}</div>
-    `);
-    setupLongPress();
+      sectionShell(t('bills'), `
+        ${tabs}
+        <div class="arch-nav">
+          <button class="icon-btn" onclick="shiftArchYear(-1)">‹</button>
+          <span class="arch-title">${year}</span>
+          <button class="icon-btn" onclick="shiftArchYear(1)">›</button>
+        </div>
+        <div style="margin-bottom:14px">${billTotalCard('archyear', t('year_total') + ' ' + year, yearCur, base)}</div>
+        <div class="rows">${rows || `<p class="muted" style="margin-top:24px">${t('no_payments')}</p>`}</div>
+      `);
+    } else {
+      const pays = await loadPayments(ARCH_PERIOD);
+      const totals = {};
+      for (const p of pays) {
+        const b = billById[p.bill_id];
+        const cur = (b && b.currency) || 'CHF';
+        totals[cur] = (totals[cur] || 0) + Number(p.amount);
+      }
+
+      pays.sort((a, b) => new Date(b.paid_at) - new Date(a.paid_at));
+      const list = pays.length
+        ? pays.map(p => {
+            const b = billById[p.bill_id] || { name: '?', currency: 'CHF' };
+            const over = b.limit_amount && Number(p.amount) > Number(b.limit_amount);
+            const bd = businessDaysSince(p.paid_at);
+            const locked = bd > 5;
+            return `
+          <div class="row-card pay-row" data-pid="${p.id}" data-locked="${locked ? '1' : '0'}"
+               onclick="payTap('${p.id}', ${locked})">
+            <div class="row-main">
+              <span class="row-name">${b.name} ${locked ? '🔒' : ''}</span>
+              <span class="row-cat">${t('paid_on')} ${fmtDate(p.paid_at)}</span>
+              ${over ? `<span class="row-cat over">⚠️ ${t('over_limit')} (${fmtMoney(b.limit_amount, b.currency)})</span>` : ''}
+            </div>
+            <span class="row-amount${over ? ' over' : ''}">${fmtMoney(p.amount, b.currency)}</span>
+          </div>`;
+          }).join('')
+        : `<p class="muted" style="margin-top:30px">${t('no_payments')}</p>`;
+
+      sectionShell(t('bills'), `
+        ${tabs}
+        <div class="arch-nav">
+          <button class="icon-btn" onclick="backToYear()">←</button>
+          <span class="arch-title">${periodLabel(ARCH_PERIOD)}</span>
+          <span style="display:flex;gap:8px">
+            <button class="icon-btn" onclick="shiftArch(-1)">‹</button>
+            <button class="icon-btn" onclick="shiftArch(1)">›</button>
+          </span>
+        </div>
+        <div style="margin-bottom:14px">${billTotalCard('archmonth', t('month_total'), totals, base)}</div>
+        <div class="rows">${list}</div>
+      `);
+      setupLongPress();
+    }
   }
 }
 
