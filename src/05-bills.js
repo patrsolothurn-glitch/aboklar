@@ -167,8 +167,8 @@ async function runOCR(file) {
   showToast(t('ocr_reading'));
   try {
     await loadTesseract();
-    const langMap = { pt: 'por', de: 'deu', fr: 'fra', it: 'ita', en: 'eng' };
-    const { data } = await Tesseract.recognize(file, langMap[LANG] || 'eng');
+    // reconhece os 5 idiomas da app em simultâneo (funciona para qualquer fatura)
+    const { data } = await Tesseract.recognize(file, 'por+deu+fra+ita+eng');
     const text = (data && data.text) || '';
     if (!text.trim()) { showToast(t('ocr_nothing')); return; }
     const setIfEmpty = (id, v) => {

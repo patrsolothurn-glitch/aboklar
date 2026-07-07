@@ -1,4 +1,4 @@
-// AboKlar — build 47 — 2026-07-07T16:32:05.279Z
+// AboKlar — build 48 — 2026-07-07T16:37:09.926Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -136,7 +136,7 @@ const I18N = {
     no_payments: 'Sem pagamentos neste mês.',
     month_total: 'Total do mês',
     pay_count: 'pagamentos',
-    ocr_reading: 'A ler o texto da foto… (pode demorar ~10s)',
+    ocr_reading: 'A ler o texto da foto… (1ª vez pode demorar ~30s)',
     ocr_done: 'Campos preenchidos a partir da foto ✓ — confirma os valores',
     ocr_nothing: 'Não consegui ler dados úteis — preenche manualmente.',
     scan_btn: '📷 Digitalizar fatura (código QR)',
@@ -322,7 +322,7 @@ const I18N = {
     no_payments: 'Keine Zahlungen in diesem Monat.',
     month_total: 'Monatstotal',
     pay_count: 'Zahlungen',
-    ocr_reading: 'Text wird gelesen… (~10s)',
+    ocr_reading: 'Text wird gelesen… (1. Mal ~30s)',
     ocr_done: 'Felder aus Foto übernommen ✓ — Werte prüfen',
     ocr_nothing: 'Keine Daten erkannt — bitte manuell ausfüllen.',
     scan_btn: '📷 Rechnung scannen (QR-Code)',
@@ -508,7 +508,7 @@ const I18N = {
     no_payments: 'Aucun paiement ce mois-ci.',
     month_total: 'Total du mois',
     pay_count: 'paiements',
-    ocr_reading: 'Lecture du texte… (~10s)',
+    ocr_reading: 'Lecture du texte… (1re fois ~30s)',
     ocr_done: 'Champs remplis depuis la photo ✓ — vérifie les valeurs',
     ocr_nothing: 'Aucune donnée lisible — remplis manuellement.',
     scan_btn: '📷 Scanner la facture (code QR)',
@@ -694,7 +694,7 @@ const I18N = {
     no_payments: 'Nessun pagamento questo mese.',
     month_total: 'Totale del mese',
     pay_count: 'pagamenti',
-    ocr_reading: 'Lettura del testo… (~10s)',
+    ocr_reading: 'Lettura del testo… (1a volta ~30s)',
     ocr_done: 'Campi compilati dalla foto ✓ — verifica i valori',
     ocr_nothing: 'Nessun dato leggibile — compila manualmente.',
     scan_btn: '📷 Scansiona la fattura (codice QR)',
@@ -880,7 +880,7 @@ const I18N = {
     no_payments: 'No payments this month.',
     month_total: 'Month total',
     pay_count: 'payments',
-    ocr_reading: 'Reading text… (~10s)',
+    ocr_reading: 'Reading text… (first time ~30s)',
     ocr_done: 'Fields filled from photo ✓ — check the values',
     ocr_nothing: 'Could not read useful data — fill in manually.',
     scan_btn: '📷 Scan bill (QR code)',
@@ -1700,8 +1700,8 @@ async function runOCR(file) {
   showToast(t('ocr_reading'));
   try {
     await loadTesseract();
-    const langMap = { pt: 'por', de: 'deu', fr: 'fra', it: 'ita', en: 'eng' };
-    const { data } = await Tesseract.recognize(file, langMap[LANG] || 'eng');
+    // reconhece os 5 idiomas da app em simultâneo (funciona para qualquer fatura)
+    const { data } = await Tesseract.recognize(file, 'por+deu+fra+ita+eng');
     const text = (data && data.text) || '';
     if (!text.trim()) { showToast(t('ocr_nothing')); return; }
     const setIfEmpty = (id, v) => {
