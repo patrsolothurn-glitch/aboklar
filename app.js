@@ -1,4 +1,4 @@
-// AboKlar — build 46 — 2026-07-07T05:26:30.658Z
+// AboKlar — build 47 — 2026-07-07T16:32:05.279Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -136,6 +136,9 @@ const I18N = {
     no_payments: 'Sem pagamentos neste mês.',
     month_total: 'Total do mês',
     pay_count: 'pagamentos',
+    ocr_reading: 'A ler o texto da foto… (pode demorar ~10s)',
+    ocr_done: 'Campos preenchidos a partir da foto ✓ — confirma os valores',
+    ocr_nothing: 'Não consegui ler dados úteis — preenche manualmente.',
     scan_btn: '📷 Digitalizar fatura (código QR)',
     scan_ok: 'Dados preenchidos a partir do QR ✓',
     scan_no_qr: 'QR não encontrado — aproxima e foca o código QR da fatura.',
@@ -319,6 +322,9 @@ const I18N = {
     no_payments: 'Keine Zahlungen in diesem Monat.',
     month_total: 'Monatstotal',
     pay_count: 'Zahlungen',
+    ocr_reading: 'Text wird gelesen… (~10s)',
+    ocr_done: 'Felder aus Foto übernommen ✓ — Werte prüfen',
+    ocr_nothing: 'Keine Daten erkannt — bitte manuell ausfüllen.',
     scan_btn: '📷 Rechnung scannen (QR-Code)',
     scan_ok: 'Daten aus QR übernommen ✓',
     scan_no_qr: 'Kein QR gefunden — näher heran und QR-Code fokussieren.',
@@ -502,6 +508,9 @@ const I18N = {
     no_payments: 'Aucun paiement ce mois-ci.',
     month_total: 'Total du mois',
     pay_count: 'paiements',
+    ocr_reading: 'Lecture du texte… (~10s)',
+    ocr_done: 'Champs remplis depuis la photo ✓ — vérifie les valeurs',
+    ocr_nothing: 'Aucune donnée lisible — remplis manuellement.',
     scan_btn: '📷 Scanner la facture (code QR)',
     scan_ok: 'Données remplies depuis le QR ✓',
     scan_no_qr: 'QR introuvable — rapproche-toi et vise le code QR.',
@@ -685,6 +694,9 @@ const I18N = {
     no_payments: 'Nessun pagamento questo mese.',
     month_total: 'Totale del mese',
     pay_count: 'pagamenti',
+    ocr_reading: 'Lettura del testo… (~10s)',
+    ocr_done: 'Campi compilati dalla foto ✓ — verifica i valori',
+    ocr_nothing: 'Nessun dato leggibile — compila manualmente.',
     scan_btn: '📷 Scansiona la fattura (codice QR)',
     scan_ok: 'Dati compilati dal QR ✓',
     scan_no_qr: 'QR non trovato — avvicinati e inquadra il codice QR.',
@@ -868,6 +880,9 @@ const I18N = {
     no_payments: 'No payments this month.',
     month_total: 'Month total',
     pay_count: 'payments',
+    ocr_reading: 'Reading text… (~10s)',
+    ocr_done: 'Fields filled from photo ✓ — check the values',
+    ocr_nothing: 'Could not read useful data — fill in manually.',
     scan_btn: '📷 Scan bill (QR code)',
     scan_ok: 'Fields filled from QR ✓',
     scan_no_qr: 'No QR found — get closer and focus the QR code.',
@@ -1614,8 +1629,8 @@ async function scanBillPhoto(input) {
       code = jsQR(img.data, w, h);
       if (code && code.data) break;
     }
-    if (!code || !code.data) { showToast(t('scan_no_qr')); return; }
-    fillFromQR(code.data);
+    if (code && code.data) { fillFromQR(code.data); return; }
+    await runOCR(file);
   } catch (e) { console.error(e); showToast(t('err_generic')); }
 }
 
@@ -1646,11 +1661,73 @@ function fillFromQR(data) {
     if (F.F && /^\d{8}$/.test(F.F)) setVal('b-date', `${F.F.slice(0,4)}-${F.F.slice(4,6)}-${F.F.slice(6,8)}`);
     if (F.G) setVal('b-notes', 'Doc ' + F.G);
     showToast(t('scan_ok'));
+  } else if (/^A:\d{9}\*/.test(data) && data.includes('*O:')) {
+    // QR das faturas portuguesas (Autoridade Tributária): A:NIF*B:...*F:data*O:total*...
+    const f = {};
+    for (const part of data.split('*')) {
+      const i = part.indexOf(':');
+      if (i > 0) f[part.slice(0, i)] = part.slice(i + 1);
+    }
+    if (f.A) setVal('b-nif', f.A);
+    if (f.O) setVal('b-amount', f.O.replace(',', '.'));
+    const g2 = i => document.getElementById(i);
+    if (g2('b-cur')) g2('b-cur').value = 'EUR';
+    if (g2('b-country') && [...g2('b-country').options].some(o => o.value === 'PT')) g2('b-country').value = 'PT';
+    if (f.G) setVal('b-notes', f.G);
+    showToast(t('scan_ok'));
   } else {
     // QR genérico: guarda o conteúdo nas notas para não se perder
     setVal('b-notes', data.slice(0, 200));
     showToast(t('scan_ok'));
   }
+}
+
+// ---- OCR (Tesseract.js a pedido) para faturas sem QR ----
+let TESS_LOADING = null;
+function loadTesseract() {
+  if (window.Tesseract) return Promise.resolve();
+  if (TESS_LOADING) return TESS_LOADING;
+  TESS_LOADING = new Promise((res, rej) => {
+    const sc = document.createElement('script');
+    sc.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    sc.onload = res; sc.onerror = rej;
+    document.head.appendChild(sc);
+  });
+  return TESS_LOADING;
+}
+
+async function runOCR(file) {
+  showToast(t('ocr_reading'));
+  try {
+    await loadTesseract();
+    const langMap = { pt: 'por', de: 'deu', fr: 'fra', it: 'ita', en: 'eng' };
+    const { data } = await Tesseract.recognize(file, langMap[LANG] || 'eng');
+    const text = (data && data.text) || '';
+    if (!text.trim()) { showToast(t('ocr_nothing')); return; }
+    const setIfEmpty = (id, v) => {
+      const el = document.getElementById(id);
+      if (el && v && !el.value.trim()) el.value = v;
+    };
+    let filled = false;
+
+    const email = text.match(/[\w.+-]+@[\w-]+\.[\w.]{2,}/);
+    if (email) { setIfEmpty('b-email', email[0]); filled = true; }
+
+    const phone = text.match(/(?:tel\.?|telefone|phone|tél)[^\d+]{0,8}(\+?[\d][\d .\/-]{6,15}\d)/i)
+      || text.match(/\+\d{2}[\d .\/-]{7,14}\d/);
+    if (phone) { setIfEmpty('b-phone', (phone[1] || phone[0]).trim()); filled = true; }
+
+    const nif = text.match(/(?:NIF|Contribuinte|UID|VAT|MwSt)[^\dA-Z]{0,8}((?:CHE[-. ]?)?\d[\d .-]{6,12}\d)/i);
+    if (nif) { setIfEmpty('b-nif', nif[1].trim()); filled = true; }
+
+    // valor: apanhar o maior montante com 2 decimais
+    const amts = [...text.matchAll(/(\d{1,3}(?:[ .']\d{3})*[.,]\d{2})/g)]
+      .map(m => parseFloat(m[1].replace(/[ .']/g, function(c){return c === ',' ? '.' : '';}).replace(',', '.')))
+      .filter(n => !isNaN(n) && n > 0 && n < 100000);
+    if (amts.length) { setIfEmpty('b-amount', Math.max(...amts).toFixed(2)); filled = true; }
+
+    showToast(filled ? t('ocr_done') : t('ocr_nothing'));
+  } catch (e) { console.error(e); showToast(t('ocr_nothing')); }
 }
 
 function exportArch(scope) {
