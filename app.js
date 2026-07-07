@@ -1,4 +1,4 @@
-// AboKlar — build 45 — 2026-07-07T02:55:26.668Z
+// AboKlar — build 46 — 2026-07-07T05:26:30.658Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -1631,6 +1631,20 @@ function fillFromQR(data) {
     if (L[10] && g('b-country') && [...g('b-country').options].some(o => o.value === L[10])) g('b-country').value = L[10];
     if (L[28]) setVal('b-ref', L[28]);
     if (L[29]) setVal('b-notes', L[29]);
+    showToast(t('scan_ok'));
+  } else if (/^A:\d{9}\*/.test(data)) {
+    // QR fiscal português (AT): A:NIF*B:NIF*C:PT*...*F:data*G:doc*O:total
+    const F = {};
+    for (const part of data.split('*')) {
+      const i = part.indexOf(':');
+      if (i > 0) F[part.slice(0, i)] = part.slice(i + 1);
+    }
+    if (F.A) setVal('b-nif', F.A);
+    if (F.O) setVal('b-amount', F.O);
+    if (g('b-cur') && [...g('b-cur').options].some(o => o.value === 'EUR')) g('b-cur').value = 'EUR';
+    if (g('b-country') && [...g('b-country').options].some(o => o.value === 'PT')) g('b-country').value = 'PT';
+    if (F.F && /^\d{8}$/.test(F.F)) setVal('b-date', `${F.F.slice(0,4)}-${F.F.slice(4,6)}-${F.F.slice(6,8)}`);
+    if (F.G) setVal('b-notes', 'Doc ' + F.G);
     showToast(t('scan_ok'));
   } else {
     // QR genérico: guarda o conteúdo nas notas para não se perder
