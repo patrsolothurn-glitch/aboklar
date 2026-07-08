@@ -122,6 +122,7 @@ function helpSection(title, steps, open) {
 
 function renderHelp() {
   sectionShell(t('help'), `
+    <button class="btn-primary" style="width:100%;margin-bottom:16px" onclick="renderSupportChat()">💬 ${t('help_chat_title')}</button>
     <p class="muted" style="text-align:left;margin-bottom:16px">${t('help_intro')}</p>
     ${helpSection(t('help_subs_title'), t('help_subs_steps'), true)}
     ${helpSection(t('help_bills_title'), t('help_bills_steps'), false)}

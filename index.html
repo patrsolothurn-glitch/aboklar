@@ -245,6 +245,17 @@
   .row-amount.over, .row-cat.over { color:var(--err); }
   .arch-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
   .arch-title { font-size:17px; font-weight:800; }
+  .chat-hint { font-size:13px; color:var(--muted); margin-bottom:12px; }
+  .chat-msgs { display:flex; flex-direction:column; gap:10px; min-height:80px; max-height:55vh; overflow-y:auto; margin-bottom:12px; }
+  .chat-bubble { max-width:85%; padding:11px 14px; border-radius:16px; font-size:14.5px; line-height:1.5; word-break:break-word; }
+  .chat-bubble.user { background:var(--amber); color:#1F2937; align-self:flex-end; border-bottom-right-radius:4px; }
+  .chat-bubble.assistant { background:var(--card); border:1.5px solid var(--border); align-self:flex-start; border-bottom-left-radius:4px; }
+  .chat-input-row { display:flex; gap:10px; }
+  .chat-input-row input { flex:1; }
+  .chat-send { padding:14px 18px; flex-shrink:0; }
+  .admin-sess { background:var(--card); border:1.5px solid var(--border); border-radius:16px; padding:14px; margin-bottom:12px; }
+  .admin-sess-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+  .admin-msgs { display:flex; flex-direction:column; gap:8px; }
   .toast {
     position:fixed; bottom:30px; left:50%; transform:translateX(-50%);
     background:var(--card); color:var(--ink); border:1.5px solid var(--border);
@@ -254,9 +265,9 @@
   .confirm-box p { margin:6px 0; font-size:15px; }
 </style>
 </head>
-<body data-build="51">
+<body data-build="52">
   <div id="app"><p style="color:var(--muted)">A carregar…</p></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="app.js?v=51"></script>
+  <script src="app.js?v=52"></script>
 </body>
 </html>
