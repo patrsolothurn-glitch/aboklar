@@ -282,6 +282,11 @@ function nextBillDue(b) {
   let base = b.due_date ? new Date(b.due_date + 'T00:00:00')
     : (b.due_day ? new Date(today.getFullYear(), today.getMonth(), b.due_day) : null);
   if (!base) return null;
+  if (b.periodicity === 'once') {
+    const days0 = Math.round((base - today) / 86400000);
+    const iso0 = `${base.getFullYear()}-${String(base.getMonth()+1).padStart(2,'0')}-${String(base.getDate()).padStart(2,'0')}`;
+    return { date: iso0, days: days0 };
+  }
   const step = PER_MONTHS[b.periodicity || 'monthly'] || 1;
   const dayWanted = base.getDate();
   let d = new Date(base); let g = 0;
@@ -342,7 +347,7 @@ async function renderBills() {
           <div class="sub-icon-wrap">${subIcon(b)}</div>
           <div class="row-main">
             <span class="row-name"><span class="dot ${b.active ? 'dot-on' : 'dot-off'}"></span>${b.name} ${flagEmoji(b.country)}</span>
-            <span class="row-cat">${[b.category, b.periodicity && b.periodicity !== 'monthly' ? ({quarterly:t('per_quarterly'),halfyear:t('per_halfyear'),yearly:t('yearly')})[b.periodicity] : null].filter(Boolean).join(' · ')}</span>
+            <span class="row-cat">${[b.category, b.periodicity && b.periodicity !== 'monthly' ? ({quarterly:t('per_quarterly'),halfyear:t('per_halfyear'),yearly:t('yearly'),once:t('per_once')})[b.periodicity] : null].filter(Boolean).join(' · ')}</span>
             ${meta2 ? `<span class="row-cat">${meta2}</span>` : ''}
             ${nd ? `<span class="row-cat">${fmtDate(nd.date)} (${t('in_days')} ${nd.days}d)</span>` : ''}
             ${b.period_start || b.period_end ? `<span class="row-cat">📆 ${b.period_start ? fmtDate(b.period_start) : '…'} – ${b.period_end ? fmtDate(b.period_end) : '…'}</span>` : ''}
@@ -581,6 +586,10 @@ async function confirmPaid(billId) {
     bill_id: billId, user_id: user.id, period: curPeriod(), amount
   });
   if (error) { console.error(error); alert(t('err_generic')); return; }
+  const billOnce = BILLS_CACHE.find(x => x.id === billId);
+  if (billOnce && billOnce.periodicity === 'once') {
+    await sb.from('bills').update({ active: false }).eq('id', billId);
+  }
   document.querySelectorAll('.modal-bg').forEach(m => m.remove());
   renderBills();
 }
@@ -632,7 +641,7 @@ async function deletePayment(pid) {
 function renderBillDetail(id) {
   const b = BILLS_CACHE.find(x => x.id === id);
   if (!b) return;
-  const perLbl = { monthly: t('monthly'), quarterly: t('per_quarterly'), halfyear: t('per_halfyear'), yearly: t('yearly') };
+  const perLbl = { monthly: t('monthly'), quarterly: t('per_quarterly'), halfyear: t('per_halfyear'), yearly: t('yearly'), once: t('per_once') };
   const rows = [
     [t('category'), b.category],
     [t('customer_ref_lbl'), b.customer_ref],
@@ -707,6 +716,7 @@ function renderBillForm(id) {
         <option value="quarterly"${b && b.periodicity === 'quarterly' ? ' selected' : ''}>${t('per_quarterly')}</option>
         <option value="halfyear"${b && b.periodicity === 'halfyear' ? ' selected' : ''}>${t('per_halfyear')}</option>
         <option value="yearly"${b && b.periodicity === 'yearly' ? ' selected' : ''}>${t('yearly')}</option>
+        <option value="once"${b && b.periodicity === 'once' ? ' selected' : ''}>${t('per_once')}</option>
       </select>
       <label class="lbl">${t('next_due')}</label>
       <input id="b-date" type="date" value="${b && b.due_date ? b.due_date : ''}">
