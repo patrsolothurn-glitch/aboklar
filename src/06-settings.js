@@ -61,7 +61,11 @@ async function renderSettings() {
       <div id="set-msg"></div>
       <button class="btn-primary" onclick="saveSettings()">${t('save')}</button>
       <div class="divider"></div>
-      ${p.is_admin ? `<button class="btn-secondary" onclick="renderAdminSupport()">${t('admin_support')}</button>` : ''}
+      ${p.is_admin ? `
+      <div class="card" style="padding:14px;margin-bottom:10px;border:1px solid var(--acc)">
+        <div style="font-weight:600;margin-bottom:8px">⚙️ Admin</div>
+        <button class="btn-secondary" style="width:100%" onclick="renderAdminSupport()">📊 Painel Admin</button>
+      </div>` : ''}
       <button class="btn-secondary" onclick="doLogout()">${t('logout')}</button>
     </div>
   `);
