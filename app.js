@@ -1,4 +1,4 @@
-// AboKlar — build 53 — 2026-07-18T19:21:16.212Z
+// AboKlar — build 54 — 2026-07-18T19:30:23.795Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -2798,19 +2798,86 @@ async function sendChatMsg() {
 
 // ---- painel admin (só para is_admin) ----
 let ADMIN_FILTER = 'unread';
+let ADMIN_TAB = 'chats';
 
 async function renderAdminSupport() {
   sectionShell(t('admin_support'), `
+    <div class="seg" style="margin-bottom:14px">
+      <button class="seg-btn${ADMIN_TAB === 'stats' ? ' on' : ''}" onclick="setAdminTab('stats')">📊 Stats</button>
+      <button class="seg-btn${ADMIN_TAB === 'chats' ? ' on' : ''}" onclick="setAdminTab('chats')">${t('admin_support')}</button>
+    </div>
+    <div id="admin-content"><p class="muted">A carregar…</p></div>
+  `);
+  if (ADMIN_TAB === 'stats') loadAdminStats();
+  else renderAdminChatsPanel();
+}
+
+function setAdminTab(tab) { ADMIN_TAB = tab; renderAdminSupport(); }
+
+async function loadAdminStats() {
+  const box = document.getElementById('admin-content');
+  if (!box) return;
+  box.innerHTML = `<p class="muted">A carregar estatísticas…</p>`;
+  const { data, error } = await sb.rpc('get_admin_stats');
+  if (error || !data) {
+    box.innerHTML = `<p class="muted" style="color:var(--err)">Erro: ${error?.message || 'sem dados'}. Cria a função SQL no Supabase.</p>`;
+    return;
+  }
+  const s = data;
+  box.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+      <div class="card" style="padding:14px;text-align:center">
+        <div style="font-size:2rem;font-weight:700;color:var(--acc)">${s.total_users}</div>
+        <div class="muted" style="font-size:.8rem">Utilizadores</div>
+      </div>
+      <div class="card" style="padding:14px;text-align:center">
+        <div style="font-size:2rem;font-weight:700;color:var(--acc)">${s.new_7d}</div>
+        <div class="muted" style="font-size:.8rem">Novos (7 dias)</div>
+      </div>
+      <div class="card" style="padding:14px;text-align:center">
+        <div style="font-size:2rem;font-weight:700;color:var(--acc)">${s.total_subs}</div>
+        <div class="muted" style="font-size:.8rem">Subscrições</div>
+      </div>
+      <div class="card" style="padding:14px;text-align:center">
+        <div style="font-size:2rem;font-weight:700;color:var(--acc)">${s.active_subs}</div>
+        <div class="muted" style="font-size:.8rem">Subscrições ativas</div>
+      </div>
+      <div class="card" style="padding:14px;text-align:center">
+        <div style="font-size:2rem;font-weight:700;color:var(--acc)">${s.total_bills}</div>
+        <div class="muted" style="font-size:.8rem">Faturas</div>
+      </div>
+      <div class="card" style="padding:14px;text-align:center">
+        <div style="font-size:2rem;font-weight:700;color:var(--acc)">${s.new_30d}</div>
+        <div class="muted" style="font-size:.8rem">Novos (30 dias)</div>
+      </div>
+    </div>
+    ${s.by_language && s.by_language.length ? `
+    <div class="card" style="padding:14px;margin-bottom:10px">
+      <div style="font-weight:600;margin-bottom:8px">Por idioma</div>
+      ${s.by_language.map(r => `<div class="row-item"><span>${r.language || '?'}</span><span class="row-cat">${r.count}</span></div>`).join('')}
+    </div>` : ''}
+    ${s.by_currency && s.by_currency.length ? `
+    <div class="card" style="padding:14px">
+      <div style="font-weight:600;margin-bottom:8px">Por moeda</div>
+      ${s.by_currency.map(r => `<div class="row-item"><span>${r.currency || '?'}</span><span class="row-cat">${r.count}</span></div>`).join('')}
+    </div>` : ''}
+  `;
+}
+
+function renderAdminChatsPanel() {
+  const box = document.getElementById('admin-content');
+  if (!box) return;
+  box.innerHTML = `
     <div class="seg" style="margin-bottom:14px">
       <button class="seg-btn${ADMIN_FILTER === 'unread' ? ' on' : ''}" onclick="setAdminFilter('unread')">${t('admin_unread')}</button>
       <button class="seg-btn${ADMIN_FILTER === 'all' ? ' on' : ''}" onclick="setAdminFilter('all')">${t('admin_all')}</button>
     </div>
     <div id="admin-chats"><p class="muted">A carregar…</p></div>
-  `);
+  `;
   loadAdminChats();
 }
 
-function setAdminFilter(f) { ADMIN_FILTER = f; renderAdminSupport(); }
+function setAdminFilter(f) { ADMIN_FILTER = f; renderAdminChatsPanel(); }
 
 async function loadAdminChats() {
   const { data: { session } } = await sb.auth.getSession();
