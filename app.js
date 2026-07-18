@@ -1,4 +1,4 @@
-// AboKlar — build 54 — 2026-07-18T19:30:23.795Z
+// AboKlar — build 55 — 2026-07-18T19:34:24.043Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -2442,7 +2442,11 @@ async function renderSettings() {
       <div id="set-msg"></div>
       <button class="btn-primary" onclick="saveSettings()">${t('save')}</button>
       <div class="divider"></div>
-      ${p.is_admin ? `<button class="btn-secondary" onclick="renderAdminSupport()">${t('admin_support')}</button>` : ''}
+      ${p.is_admin ? `
+      <div class="card" style="padding:14px;margin-bottom:10px;border:1px solid var(--acc)">
+        <div style="font-weight:600;margin-bottom:8px">⚙️ Admin</div>
+        <button class="btn-secondary" style="width:100%" onclick="renderAdminSupport()">📊 Painel Admin</button>
+      </div>` : ''}
       <button class="btn-secondary" onclick="doLogout()">${t('logout')}</button>
     </div>
   `);
