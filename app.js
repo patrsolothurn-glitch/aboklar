@@ -1,4 +1,4 @@
-// AboKlar — build 55 — 2026-07-18T19:34:24.043Z
+// AboKlar — build 56 — 2026-07-18T19:41:14.084Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -1151,13 +1151,13 @@ async function renderHome(user) {
   loadWeather();
 }
 
-function sectionShell(title, inner) {
+function sectionShell(title, inner, rightBtn = '') {
   $app().innerHTML = `
     <div class="page">
       <header class="topbar">
         <button class="icon-btn" onclick="boot(true)">←</button>
         <span class="topbar-name">${title}</span>
-        <span style="width:40px"></span>
+        ${rightBtn || '<span style="width:40px"></span>'}
       </header>
       ${inner}
     </div>`;
@@ -2410,6 +2410,13 @@ async function renderSettings() {
   if (!PROFILE) await loadProfile();
   const p = PROFILE || {};
   const pushOn = await pushIsEnabled();
+  const adminMenuBtn = p.is_admin ? `
+    <div style="position:relative">
+      <button class="icon-btn" onclick="toggleAdminMenu()" id="admin-menu-btn">⋮</button>
+      <div id="admin-menu" style="display:none;position:absolute;right:0;top:44px;background:var(--card);border-radius:12px;padding:8px;box-shadow:0 4px 20px rgba(0,0,0,.3);min-width:160px;z-index:100">
+        <button class="btn-secondary" style="width:100%;text-align:left;margin:0" onclick="renderAdminSupport()">📊 Painel Admin</button>
+      </div>
+    </div>` : '';
   sectionShell(t('settings'), `
     <div class="form">
       <label class="lbl">${t('set_name')}</label>
@@ -2442,14 +2449,9 @@ async function renderSettings() {
       <div id="set-msg"></div>
       <button class="btn-primary" onclick="saveSettings()">${t('save')}</button>
       <div class="divider"></div>
-      ${p.is_admin ? `
-      <div class="card" style="padding:14px;margin-bottom:10px;border:1px solid var(--acc)">
-        <div style="font-weight:600;margin-bottom:8px">⚙️ Admin</div>
-        <button class="btn-secondary" style="width:100%" onclick="renderAdminSupport()">📊 Painel Admin</button>
-      </div>` : ''}
       <button class="btn-secondary" onclick="doLogout()">${t('logout')}</button>
     </div>
-  `);
+  `, adminMenuBtn);
 }
 
 function setTheme(btn, mode) {
@@ -2479,6 +2481,20 @@ async function saveSettings() {
   applyTheme(theme);
   document.getElementById('set-msg').innerHTML = `<div class="ok">${t('saved')}</div>`;
   setTimeout(renderSettings, 700);
+}
+
+function toggleAdminMenu() {
+  const m = document.getElementById('admin-menu');
+  if (!m) return;
+  m.style.display = m.style.display === 'none' ? 'block' : 'none';
+  if (m.style.display === 'block') {
+    setTimeout(() => document.addEventListener('click', function close(e) {
+      if (!e.target.closest('#admin-menu') && e.target.id !== 'admin-menu-btn') {
+        m.style.display = 'none';
+        document.removeEventListener('click', close);
+      }
+    }), 0);
+  }
 }
 
 
