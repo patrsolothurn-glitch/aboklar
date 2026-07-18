@@ -1,6 +1,6 @@
 // Subscrições — CRUD + detalhe + estado + ordenação
 const CURRENCIES = ['CHF', 'EUR', 'USD', 'GBP'];
-const PAY_METHODS = ['Débito', 'Cartão', 'Twint', 'Apple Pay', 'Google Pay', 'PayPal', 'Transferência', 'Outro'];
+const PAY_METHODS = ['Débito', 'Cartão', 'Twint', 'Apple Pay', 'Google Pay', 'PayPal', 'MB WAY', 'Transferência', 'Outro'];
 const COUNTRIES = ['CH', 'PT', 'DE', 'FR', 'IT', 'AT', 'ES', 'NL', 'BE', 'GB', 'US'];
 let SUBS_CACHE = [];
 let SUBS_SORT = 'date';
