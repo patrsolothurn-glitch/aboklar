@@ -97,7 +97,7 @@ async function loadAdminStats() {
     box.innerHTML = `<p class="muted" style="color:var(--err)">Erro: ${statsRes.error?.message || 'sem dados'}</p>`;
     return;
   }
-  const s = { ...statsRes.data, users: (usersRes.data || []).sort((a,b) => new Date(a.created_at) - new Date(b.created_at)) };
+  const s = { ...statsRes.data, users: (usersRes.data || []).sort((a,b) => (b.is_admin||0)-(a.is_admin||0) || (a.created_at||'z').localeCompare(b.created_at||'z')) };
   const badge = (icon, val, label) => `
     <div style="display:flex;align-items:center;gap:6px;background:var(--bg);border-radius:8px;padding:7px 10px">
       <span style="font-size:1rem">${icon}</span>
