@@ -89,12 +89,15 @@ async function loadAdminStats() {
   const box = document.getElementById('admin-content');
   if (!box) return;
   box.innerHTML = `<p class="muted">A carregar estatísticas…</p>`;
-  const { data, error } = await sb.rpc('get_admin_stats');
-  if (error || !data) {
-    box.innerHTML = `<p class="muted" style="color:var(--err)">Erro: ${error?.message || 'sem dados'}</p>`;
+  const [statsRes, usersRes] = await Promise.all([
+    sb.rpc('get_admin_stats'),
+    sb.rpc('get_user_list')
+  ]);
+  if (statsRes.error || !statsRes.data) {
+    box.innerHTML = `<p class="muted" style="color:var(--err)">Erro: ${statsRes.error?.message || 'sem dados'}</p>`;
     return;
   }
-  const s = data;
+  const s = { ...statsRes.data, users: usersRes.data || [] };
   const statPill = (val, label) => `
     <div style="text-align:center;padding:10px 0">
       <div style="font-size:1.6rem;font-weight:700;color:var(--acc);line-height:1">${val}</div>
