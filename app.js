@@ -1,4 +1,4 @@
-// AboKlar — build 59 — 2026-07-18T20:08:24.048Z
+// AboKlar — build 60 — 2026-07-18T21:06:12.173Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -2847,35 +2847,47 @@ async function loadAdminStats() {
     return;
   }
   const s = { ...statsRes.data, users: usersRes.data || [] };
-  const statPill = (val, label) => `
-    <div style="text-align:center;padding:10px 0">
-      <div style="font-size:1.6rem;font-weight:700;color:var(--acc);line-height:1">${val}</div>
-      <div class="muted" style="font-size:.7rem;margin-top:3px">${label}</div>
-    </div>`;
-  const userCard = u => `
-    <div class="card" style="padding:14px;margin-bottom:10px">
-      <div style="font-size:1rem;font-weight:600;margin-bottom:4px">${u.display_name || '—'}</div>
-      <div style="font-size:.85rem;color:var(--acc);margin-bottom:8px">${u.email || '—'}</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
-        <div class="muted" style="font-size:.75rem">📅 ${u.created_at ? new Date(u.created_at).toLocaleDateString('pt-PT') : '—'}</div>
-        <div class="muted" style="font-size:.75rem">🌐 ${u.language || '?'} &nbsp;💰 ${u.currency || '?'}</div>
-        <div style="font-size:.8rem">📋 <strong>${u.sub_count || 0}</strong> subscrições</div>
-        <div style="font-size:.8rem">🧾 <strong>${u.bill_count || 0}</strong> faturas</div>
+  const badge = (icon, val, label) => `
+    <div style="display:flex;align-items:center;gap:6px;background:var(--bg);border-radius:8px;padding:7px 10px">
+      <span style="font-size:1rem">${icon}</span>
+      <div>
+        <div style="font-weight:700;font-size:.95rem;line-height:1.2">${val}</div>
+        <div style="font-size:.68rem;color:var(--muted)">${label}</div>
       </div>
     </div>`;
+  const userCard = u => `
+    <div class="card" style="padding:16px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border)">
+        <div style="width:38px;height:38px;border-radius:50%;background:var(--acc);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;color:#000;flex-shrink:0">${(u.display_name || '?')[0].toUpperCase()}</div>
+        <div style="min-width:0">
+          <div style="font-weight:600;font-size:.95rem">${u.display_name || '—'}</div>
+          <div style="font-size:.78rem;color:var(--acc);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.email || '—'}</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        ${badge('📅', u.created_at ? new Date(u.created_at).toLocaleDateString('pt-PT') : '—', 'Registo')}
+        ${badge('🌐', (u.language || '?').toUpperCase() + ' · ' + (u.currency || '?'), 'Idioma · Moeda')}
+        ${badge('📋', u.sub_count || 0, 'Subscrições')}
+        ${badge('🧾', u.bill_count || 0, 'Faturas')}
+      </div>
+    </div>`;
+  const statBlock = (icon, val, label) => `
+    <div style="text-align:center;padding:12px 8px">
+      <div style="font-size:1.5rem;font-weight:700;color:var(--acc);line-height:1">${val}</div>
+      <div style="font-size:.65rem;color:var(--muted);margin-top:4px">${icon} ${label}</div>
+    </div>`;
   box.innerHTML = `
-    <div style="font-weight:600;font-size:.9rem;margin-bottom:8px;color:var(--acc)">👥 Utilizadores</div>
+    <div style="font-size:.7rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Utilizadores</div>
     ${s.users && s.users.length ? s.users.map(userCard).join('') : '<p class="muted">—</p>'}
-
-    <div style="font-weight:600;font-size:.9rem;margin:14px 0 8px;color:var(--acc)">📊 Totais</div>
-    <div class="card" style="display:grid;grid-template-columns:1fr 1fr 1fr;margin-bottom:10px">
-      ${statPill(s.total_users, '👤 Utilizadores')}
-      ${statPill(s.total_subs, '📋 Subscrições')}
-      ${statPill(s.total_bills, '🧾 Faturas')}
+    <div style="font-size:.7rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:16px 0 10px">Totais</div>
+    <div class="card" style="display:grid;grid-template-columns:repeat(3,1fr);margin-bottom:8px;border-radius:14px;overflow:hidden">
+      ${statBlock('👤', s.total_users, 'Utilizadores')}
+      ${statBlock('📋', s.total_subs, 'Subscrições')}
+      ${statBlock('🧾', s.total_bills, 'Faturas')}
     </div>
-    <div class="card" style="display:grid;grid-template-columns:1fr 1fr">
-      ${statPill(s.new_7d, '🆕 Novos 7d')}
-      ${statPill(s.new_30d, '📅 Novos 30d')}
+    <div class="card" style="display:grid;grid-template-columns:1fr 1fr;border-radius:14px;overflow:hidden">
+      ${statBlock('🆕', s.new_7d, 'Novos 7 dias')}
+      ${statBlock('📅', s.new_30d, 'Novos 30 dias')}
     </div>
   `;
 }
