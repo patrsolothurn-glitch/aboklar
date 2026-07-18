@@ -1,4 +1,4 @@
-// AboKlar — build 57 — 2026-07-18T19:59:29.763Z
+// AboKlar — build 58 — 2026-07-18T20:06:00.655Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -2844,49 +2844,35 @@ async function loadAdminStats() {
     return;
   }
   const s = data;
-  const statCard = (val, label) => `
-    <div class="card" style="padding:14px;text-align:center">
-      <div style="font-size:1.8rem;font-weight:700;color:var(--acc)">${val}</div>
-      <div class="muted" style="font-size:.75rem;margin-top:2px">${label}</div>
+  const statPill = (val, label) => `
+    <div style="text-align:center;padding:10px 0">
+      <div style="font-size:1.6rem;font-weight:700;color:var(--acc);line-height:1">${val}</div>
+      <div class="muted" style="font-size:.7rem;margin-top:3px">${label}</div>
+    </div>`;
+  const userCard = u => `
+    <div class="card" style="padding:14px;margin-bottom:10px">
+      <div style="font-size:1rem;font-weight:600;margin-bottom:4px">${u.display_name || '—'}</div>
+      <div style="font-size:.85rem;color:var(--acc);margin-bottom:8px">${u.email || '—'}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        <div class="muted" style="font-size:.75rem">📅 ${u.created_at ? new Date(u.created_at).toLocaleDateString('pt-PT') : '—'}</div>
+        <div class="muted" style="font-size:.75rem">🌐 ${u.language || '?'} &nbsp;💰 ${u.currency || '?'}</div>
+        <div style="font-size:.8rem">📋 <strong>${u.sub_count || 0}</strong> subscrições</div>
+        <div style="font-size:.8rem">🧾 <strong>${u.bill_count || 0}</strong> faturas</div>
+      </div>
     </div>`;
   box.innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-      ${statCard(s.total_users, '👤 Utilizadores')}
-      ${statCard(s.new_7d, '🆕 Novos 7 dias')}
-      ${statCard(s.total_subs, '📋 Subscrições')}
-      ${statCard(s.active_subs, '✅ Ativas')}
-      ${statCard(s.total_bills, '🧾 Faturas')}
-      ${statCard(s.new_30d, '📅 Novos 30 dias')}
+    <div style="font-weight:600;font-size:.9rem;margin-bottom:8px;color:var(--acc)">👥 Utilizadores</div>
+    ${s.users && s.users.length ? s.users.map(userCard).join('') : '<p class="muted">—</p>'}
+
+    <div style="font-weight:600;font-size:.9rem;margin:14px 0 8px;color:var(--acc)">📊 Totais</div>
+    <div class="card" style="display:grid;grid-template-columns:1fr 1fr 1fr;margin-bottom:10px">
+      ${statPill(s.total_users, '👤 Utilizadores')}
+      ${statPill(s.total_subs, '📋 Subscrições')}
+      ${statPill(s.total_bills, '🧾 Faturas')}
     </div>
-
-    ${s.users && s.users.length ? `
-    <div class="card" style="padding:14px;margin-bottom:10px">
-      <div style="font-weight:600;margin-bottom:10px">👥 Utilizadores</div>
-      ${s.users.map(u => `
-        <div style="padding:8px 0;border-bottom:1px solid var(--border)">
-          <div style="font-weight:500">${u.display_name || '—'}</div>
-          <div class="muted" style="font-size:.8rem">${u.email || '—'}</div>
-          <div class="muted" style="font-size:.75rem">${u.language || '?'} · ${u.currency || '?'} · ${u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}</div>
-        </div>`).join('')}
-    </div>` : ''}
-
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      ${s.by_language && s.by_language.length ? `
-      <div class="card" style="padding:14px">
-        <div style="font-weight:600;margin-bottom:8px">🌐 Idioma</div>
-        ${s.by_language.map(r => `
-          <div style="display:flex;justify-content:space-between;padding:3px 0">
-            <span>${r.language || '?'}</span><span class="muted">${r.count}</span>
-          </div>`).join('')}
-      </div>` : ''}
-      ${s.by_currency && s.by_currency.length ? `
-      <div class="card" style="padding:14px">
-        <div style="font-weight:600;margin-bottom:8px">💰 Moeda</div>
-        ${s.by_currency.map(r => `
-          <div style="display:flex;justify-content:space-between;padding:3px 0">
-            <span>${r.currency || '?'}</span><span class="muted">${r.count}</span>
-          </div>`).join('')}
-      </div>` : ''}
+    <div class="card" style="display:grid;grid-template-columns:1fr 1fr">
+      ${statPill(s.new_7d, '🆕 Novos 7d')}
+      ${statPill(s.new_30d, '📅 Novos 30d')}
     </div>
   `;
 }
