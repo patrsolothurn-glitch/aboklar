@@ -1,4 +1,4 @@
-// AboKlar — build 56 — 2026-07-18T19:41:14.084Z
+// AboKlar — build 57 — 2026-07-18T19:59:29.763Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -2840,47 +2840,54 @@ async function loadAdminStats() {
   box.innerHTML = `<p class="muted">A carregar estatísticas…</p>`;
   const { data, error } = await sb.rpc('get_admin_stats');
   if (error || !data) {
-    box.innerHTML = `<p class="muted" style="color:var(--err)">Erro: ${error?.message || 'sem dados'}. Cria a função SQL no Supabase.</p>`;
+    box.innerHTML = `<p class="muted" style="color:var(--err)">Erro: ${error?.message || 'sem dados'}</p>`;
     return;
   }
   const s = data;
+  const statCard = (val, label) => `
+    <div class="card" style="padding:14px;text-align:center">
+      <div style="font-size:1.8rem;font-weight:700;color:var(--acc)">${val}</div>
+      <div class="muted" style="font-size:.75rem;margin-top:2px">${label}</div>
+    </div>`;
   box.innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
-      <div class="card" style="padding:14px;text-align:center">
-        <div style="font-size:2rem;font-weight:700;color:var(--acc)">${s.total_users}</div>
-        <div class="muted" style="font-size:.8rem">Utilizadores</div>
-      </div>
-      <div class="card" style="padding:14px;text-align:center">
-        <div style="font-size:2rem;font-weight:700;color:var(--acc)">${s.new_7d}</div>
-        <div class="muted" style="font-size:.8rem">Novos (7 dias)</div>
-      </div>
-      <div class="card" style="padding:14px;text-align:center">
-        <div style="font-size:2rem;font-weight:700;color:var(--acc)">${s.total_subs}</div>
-        <div class="muted" style="font-size:.8rem">Subscrições</div>
-      </div>
-      <div class="card" style="padding:14px;text-align:center">
-        <div style="font-size:2rem;font-weight:700;color:var(--acc)">${s.active_subs}</div>
-        <div class="muted" style="font-size:.8rem">Subscrições ativas</div>
-      </div>
-      <div class="card" style="padding:14px;text-align:center">
-        <div style="font-size:2rem;font-weight:700;color:var(--acc)">${s.total_bills}</div>
-        <div class="muted" style="font-size:.8rem">Faturas</div>
-      </div>
-      <div class="card" style="padding:14px;text-align:center">
-        <div style="font-size:2rem;font-weight:700;color:var(--acc)">${s.new_30d}</div>
-        <div class="muted" style="font-size:.8rem">Novos (30 dias)</div>
-      </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      ${statCard(s.total_users, '👤 Utilizadores')}
+      ${statCard(s.new_7d, '🆕 Novos 7 dias')}
+      ${statCard(s.total_subs, '📋 Subscrições')}
+      ${statCard(s.active_subs, '✅ Ativas')}
+      ${statCard(s.total_bills, '🧾 Faturas')}
+      ${statCard(s.new_30d, '📅 Novos 30 dias')}
     </div>
-    ${s.by_language && s.by_language.length ? `
+
+    ${s.users && s.users.length ? `
     <div class="card" style="padding:14px;margin-bottom:10px">
-      <div style="font-weight:600;margin-bottom:8px">Por idioma</div>
-      ${s.by_language.map(r => `<div class="row-item"><span>${r.language || '?'}</span><span class="row-cat">${r.count}</span></div>`).join('')}
+      <div style="font-weight:600;margin-bottom:10px">👥 Utilizadores</div>
+      ${s.users.map(u => `
+        <div style="padding:8px 0;border-bottom:1px solid var(--border)">
+          <div style="font-weight:500">${u.display_name || '—'}</div>
+          <div class="muted" style="font-size:.8rem">${u.email || '—'}</div>
+          <div class="muted" style="font-size:.75rem">${u.language || '?'} · ${u.currency || '?'} · ${u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}</div>
+        </div>`).join('')}
     </div>` : ''}
-    ${s.by_currency && s.by_currency.length ? `
-    <div class="card" style="padding:14px">
-      <div style="font-weight:600;margin-bottom:8px">Por moeda</div>
-      ${s.by_currency.map(r => `<div class="row-item"><span>${r.currency || '?'}</span><span class="row-cat">${r.count}</span></div>`).join('')}
-    </div>` : ''}
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      ${s.by_language && s.by_language.length ? `
+      <div class="card" style="padding:14px">
+        <div style="font-weight:600;margin-bottom:8px">🌐 Idioma</div>
+        ${s.by_language.map(r => `
+          <div style="display:flex;justify-content:space-between;padding:3px 0">
+            <span>${r.language || '?'}</span><span class="muted">${r.count}</span>
+          </div>`).join('')}
+      </div>` : ''}
+      ${s.by_currency && s.by_currency.length ? `
+      <div class="card" style="padding:14px">
+        <div style="font-weight:600;margin-bottom:8px">💰 Moeda</div>
+        ${s.by_currency.map(r => `
+          <div style="display:flex;justify-content:space-between;padding:3px 0">
+            <span>${r.currency || '?'}</span><span class="muted">${r.count}</span>
+          </div>`).join('')}
+      </div>` : ''}
+    </div>
   `;
 }
 
