@@ -100,13 +100,13 @@ async function renderHome(user) {
   loadWeather();
 }
 
-function sectionShell(title, inner) {
+function sectionShell(title, inner, rightBtn = '') {
   $app().innerHTML = `
     <div class="page">
       <header class="topbar">
         <button class="icon-btn" onclick="boot(true)">←</button>
         <span class="topbar-name">${title}</span>
-        <span style="width:40px"></span>
+        ${rightBtn || '<span style="width:40px"></span>'}
       </header>
       ${inner}
     </div>`;
