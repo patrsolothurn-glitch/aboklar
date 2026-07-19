@@ -1,6 +1,13 @@
-// AboKlar service worker — push notifications
+// AboKlar service worker — push notifications + auto-update
 self.addEventListener('install', e => self.skipWaiting());
-self.addEventListener('activate', e => e.waitUntil(clients.claim()));
+
+self.addEventListener('activate', e => e.waitUntil(
+  clients.claim().then(() =>
+    clients.matchAll({ type: 'window' }).then(list =>
+      list.forEach(c => c.postMessage({ type: 'SW_UPDATED' }))
+    )
+  )
+));
 
 self.addEventListener('push', e => {
   let data = {};
