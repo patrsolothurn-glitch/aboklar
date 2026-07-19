@@ -1,4 +1,4 @@
-// AboKlar — build 62 — 2026-07-18T21:17:01.250Z
+// AboKlar — build 63 — 2026-07-19T08:55:26.469Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -1226,7 +1226,12 @@ async function boot(forceHome) {
 }
 document.addEventListener('DOMContentLoaded', () => {
   boot();
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+    navigator.serviceWorker.addEventListener('message', e => {
+      if (e.data?.type === 'SW_UPDATED') location.reload(true);
+    });
+  }
 });
 
 
