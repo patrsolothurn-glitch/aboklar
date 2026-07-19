@@ -175,5 +175,10 @@ async function boot(forceHome) {
 }
 document.addEventListener('DOMContentLoaded', () => {
   boot();
-  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+    navigator.serviceWorker.addEventListener('message', e => {
+      if (e.data?.type === 'SW_UPDATED') location.reload(true);
+    });
+  }
 });
