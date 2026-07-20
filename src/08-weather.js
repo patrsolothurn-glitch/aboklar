@@ -2,6 +2,7 @@
 let WEATHER_CACHE = null;
 let WEATHER_TS = 0;
 let WEATHER_PLACE = '';
+let WEATHER_WEEK = 0;
 
 const WMO_EMOJI = c => {
   if (c === 0) return '☀️';
@@ -60,7 +61,7 @@ async function fetchWeather(lat, lon) {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
       `&current=temperature_2m,weather_code` +
       `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,sunrise,sunset,uv_index_max` +
-      `&timezone=auto&forecast_days=7`;
+      `&timezone=auto&forecast_days=14`;
     const res = await fetch(url);
     const data = await res.json();
     WEATHER_CACHE = data; WEATHER_TS = Date.now();
@@ -71,16 +72,35 @@ async function fetchWeather(lat, lon) {
 function renderWeather(d) {
   const box = document.getElementById('weather-box');
   if (!box || !d || !d.current) return;
+  renderWeatherWeek(d);
+}
+
+function renderWeatherWeek(d) {
+  const box = document.getElementById('weather-box');
+  if (!box || !d || !d.current) return;
   const wd = t('weekdays_short');
-  const days = (d.daily && d.daily.time ? d.daily.time : []).map((iso, i) => {
+  const allDays = d.daily && d.daily.time ? d.daily.time : [];
+  const totalWeeks = Math.ceil(allDays.length / 7);
+  const start = WEATHER_WEEK * 7;
+  const slice = allDays.slice(start, start + 7);
+  const days = slice.map((iso, j) => {
+    const i = start + j;
     const date = new Date(iso + 'T00:00:00');
+    const label = i === 0 ? t('weather_today') : wd[date.getDay()];
     return `<button class="wday" onclick="showDayDetail(${i})">
-      <span class="wday-name">${i === 0 ? t('weather_today') : wd[date.getDay()]}</span>
+      <span class="wday-name">${label}</span>
       <span class="wday-icon">${WMO_EMOJI(d.daily.weather_code[i])}</span>
       <span class="wday-max">${Math.round(d.daily.temperature_2m_max[i])}°</span>
       <span class="wday-min">${Math.round(d.daily.temperature_2m_min[i])}°</span>
     </button>`;
   }).join('');
+
+  const navBtn = (dir, disabled) => `
+    <button onclick="changeWeatherWeek(${dir})" ${disabled ? 'disabled' : ''}
+      style="background:none;border:none;font-size:1.3rem;cursor:${disabled ? 'default' : 'pointer'};
+             opacity:${disabled ? '0.2' : '0.7'};padding:0 6px;color:inherit;line-height:1;align-self:center">
+      ${dir < 0 ? '←' : '→'}
+    </button>`;
 
   box.innerHTML = `
     <button class="weather-place" onclick="openCityPicker()">📍 ${WEATHER_PLACE || t('w_pick_city')} ▾</button>
@@ -88,7 +108,18 @@ function renderWeather(d) {
       <span class="wnow-icon">${WMO_EMOJI(d.current.weather_code)}</span>
       <span class="wnow-temp">${Math.round(d.current.temperature_2m)}°C</span>
     </div>
-    <div class="weather-week">${days}</div>`;
+    <div style="display:flex;align-items:stretch;gap:2px">
+      ${navBtn(-1, WEATHER_WEEK === 0)}
+      <div class="weather-week" style="flex:1">${days}</div>
+      ${navBtn(1, WEATHER_WEEK >= totalWeeks - 1)}
+    </div>`;
+}
+
+function changeWeatherWeek(dir) {
+  const allDays = WEATHER_CACHE?.daily?.time || [];
+  const totalWeeks = Math.ceil(allDays.length / 7);
+  WEATHER_WEEK = Math.max(0, Math.min(totalWeeks - 1, WEATHER_WEEK + dir));
+  renderWeatherWeek(WEATHER_CACHE);
 }
 
 function showDayDetail(i) {
