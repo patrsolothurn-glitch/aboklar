@@ -1,4 +1,4 @@
-// AboKlar — build 64 — 2026-07-20T10:45:43.321Z
+// AboKlar — build 65 — 2026-07-20T10:52:20.092Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -2628,6 +2628,7 @@ async function fetchWeather(lat, lon) {
   try {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
       `&current=temperature_2m,weather_code` +
+      `&hourly=temperature_2m,weather_code,precipitation_probability,wind_speed_10m` +
       `&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,sunrise,sunset,uv_index_max` +
       `&timezone=auto&forecast_days=14`;
     const res = await fetch(url);
@@ -2706,6 +2707,32 @@ function showDayDetail(i) {
     [`☀️ ${t('w_uv')}`, `${Math.round(d.daily.uv_index_max[i] ?? 0)}`]
   ];
 
+  // Dados horários para este dia
+  let hoursHtml = '';
+  if (d.hourly && d.hourly.time) {
+    const now = new Date();
+    const dayPrefix = iso; // 'YYYY-MM-DD'
+    const dayHours = d.hourly.time
+      .map((t2, hi) => ({ t: t2, hi }))
+      .filter(({ t: t2 }) => t2.startsWith(dayPrefix));
+    if (dayHours.length) {
+      const hourRows = dayHours.map(({ t: t2, hi }) => {
+        const hour = t2.slice(11, 16);
+        const isNow = i === 0 && parseInt(hour) === now.getHours();
+        return `<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:8px;${isNow ? 'background:var(--acc20,rgba(255,180,0,.15));font-weight:600' : ''}">
+          <span style="width:38px;font-size:.8rem;color:var(--muted)">${hour}</span>
+          <span>${WMO_EMOJI(d.hourly.weather_code[hi])}</span>
+          <span style="min-width:36px;font-size:.9rem">${Math.round(d.hourly.temperature_2m[hi])}°</span>
+          <span style="font-size:.75rem;color:var(--muted)">${d.hourly.precipitation_probability[hi] ?? 0}% 💧</span>
+          <span style="font-size:.75rem;color:var(--muted);margin-left:auto">${Math.round(d.hourly.wind_speed_10m[hi])} km/h 💨</span>
+        </div>`;
+      }).join('');
+      hoursHtml = `
+        <div style="font-size:.7rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:14px 0 6px">Hora a hora</div>
+        <div style="max-height:220px;overflow-y:auto;border-radius:10px;background:var(--bg)">${hourRows}</div>`;
+    }
+  }
+
   const modal = document.createElement('div');
   modal.className = 'modal-bg';
   modal.innerHTML = `
@@ -2718,6 +2745,7 @@ function showDayDetail(i) {
         </div>
       </div>
       ${rows.map(r => `<div class="detail-row"><span>${r[0]}</span><b>${r[1]}</b></div>`).join('')}
+      ${hoursHtml}
       <div class="modal-btns">
         <button class="btn-secondary" onclick="this.closest('.modal-bg').remove()">${t('close')}</button>
       </div>
