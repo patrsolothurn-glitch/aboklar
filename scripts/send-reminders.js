@@ -3,7 +3,7 @@ const SUPA_URL = 'https://dxmuchztqiglbmgswdsh.supabase.co';
 const SUPA_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const VAPID_PUB = 'BE-bAwzQPaq5wiwvxaClpwUUGOc6g6dBE1ndwUoO5gaL1uD8eqIiVrkXEpsg0zMqvhKnA2Qm6TxTixrBec6qF-w';
 const VAPID_PRIV = process.env.VAPID_PRIVATE_KEY;
-const DEFAULT_DAYS = [3, 5, 7, 10, 15];
+const DEFAULT_DAYS = 7;
 const PER = { monthly:1, quarterly:3, halfyear:6, yearly:12 };
 
 async function query(table, filter='') {
@@ -51,8 +51,6 @@ async function sendPush(subscription, payload) {
 
 async function main() {
   const today = new Date(); today.setHours(0,0,0,0);
-  const targets = DAYS.map(n => { const t=new Date(today); t.setDate(t.getDate()+n); return {n, time:t.getTime()}; });
-
   const [subs, bills] = await Promise.all([
     query('subscriptions', 'active=eq.true'),
     query('bills', 'active=eq.true')
@@ -67,15 +65,17 @@ async function main() {
 
   for (const s of subs||[]) {
     const d=nextSub(s); if(!d) continue;
-    const days = s.reminder_days ? s.reminder_days.split(',').map(Number) : DEFAULT_DAYS;
-    const m=targets.find(t=>t.time===d.getTime()&&days.includes(t.n));
-    if(!m) continue; add(s.user_id,m.n,`📋 ${s.name} (${s.amount} ${s.currency})`);
+    const n = parseInt(s.reminder_days) || DEFAULT_DAYS;
+    const target = new Date(today); target.setDate(target.getDate()+n);
+    if(d.getTime()!==target.getTime()) continue;
+    add(s.user_id, n, `📋 ${s.name} (${s.amount} ${s.currency})`);
   }
   for (const b of bills||[]) {
     const d=nextBill(b); if(!d) continue;
-    const days = b.reminder_days ? b.reminder_days.split(',').map(Number) : DEFAULT_DAYS;
-    const m=targets.find(t=>t.time===d.getTime()&&days.includes(t.n));
-    if(!m) continue; add(b.user_id,m.n,`🧾 ${b.name} (${b.reference_amount} ${b.currency})`);
+    const n = parseInt(b.reminder_days) || DEFAULT_DAYS;
+    const target = new Date(today); target.setDate(target.getDate()+n);
+    if(d.getTime()!==target.getTime()) continue;
+    add(b.user_id, n, `🧾 ${b.name} (${b.reference_amount} ${b.currency})`);
   }
 
   const webpush = (await import('web-push')).default;
