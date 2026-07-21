@@ -289,12 +289,29 @@ function renderSubForm(id) {
       <input type="hidden" id="s-cycle" value="${cycle}">
       <label class="lbl">${t('renewal_date')}</label>
       <input id="s-date" type="date" value="${s && s.renewal_date ? s.renewal_date : ''}">
+      <label class="lbl">🔔 Avisos antecipados</label>
+      <div class="seg" style="flex-wrap:wrap;gap:6px" id="s-reminder-wrap">
+        ${[3,5,7,10,15].map(d => {
+          const active = !s || !s.reminder_days ? true : s.reminder_days.split(',').map(Number).includes(d);
+          return `<button type="button" class="seg-btn${active ? ' on' : ''}" style="min-width:44px" onclick="toggleReminder(this,${d})">${d}d</button>`;
+        }).join('')}
+      </div>
+      <input type="hidden" id="s-reminders" value="${s && s.reminder_days ? s.reminder_days : '3,5,7,10,15'}">
       <div id="s-err"></div>
       <button class="btn-primary" onclick="saveSub(${isEdit ? `'${s.id}'` : 'null'})">${t('save')}</button>
       <button class="btn-secondary" onclick="renderSubs()">${t('cancel')}</button>
       ${isEdit ? `<button class="btn-danger" onclick="deleteSub('${s.id}')">${t('delete')} 🗑️</button>` : ''}
     </div>
   `);
+}
+
+function toggleReminder(btn, day, inputId) {
+  btn.classList.toggle('on');
+  const input = document.getElementById(inputId || 's-reminders');
+  let days = input.value ? input.value.split(',').map(Number).filter(Boolean) : [];
+  if (btn.classList.contains('on')) { if (!days.includes(day)) days.push(day); }
+  else { days = days.filter(d => d !== day); }
+  input.value = days.sort((a,b)=>a-b).join(',');
 }
 
 function segCycle(btn, val) {
@@ -329,7 +346,8 @@ async function saveSub(id) {
     email: g('s-email').value.trim() || null,
     billing_cycle: cycle,
     renewal_day: cycle === 'monthly' && rdate ? parseInt(rdate.slice(8, 10), 10) : null,
-    renewal_date: rdate
+    renewal_date: rdate,
+    reminder_days: g('s-reminders').value || '3,5,7,10,15'
   };
 
   let error;
