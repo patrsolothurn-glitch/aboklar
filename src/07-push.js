@@ -1,5 +1,5 @@
 // Push notifications — subscrição do dispositivo
-const VAPID_PUBLIC = 'BA2j4REGfVURlASSywNEFnaiXS3Q2ZYZ56__ap0YMQKJI0q9LTBHHQ8dtPVTZ80S9tuNvbyS8pF7Lx2LooTUcIU';
+const VAPID_PUBLIC = 'BE-bAwzQPaq5wiwvxaClpwUUGOc6g6dBE1ndwUoO5gaL1uD8eqIiVrkXEpsg0zMqvhKnA2Qm6TxTixrBec6qF-w';
 
 function urlB64ToUint8(base64) {
   const padding = '='.repeat((4 - base64.length % 4) % 4);
