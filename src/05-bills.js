@@ -735,14 +735,8 @@ function renderBillForm(id) {
       <input id="b-phone" type="tel" placeholder="${t('phone_ph')}" value="${esc(b && b.phone)}">
       <input id="b-email" type="email" placeholder="${t('email_ph')}" value="${esc(b && b.email)}">
       <input id="b-notes" type="text" placeholder="${t('notes_ph')}" value="${esc(b && b.notes)}">
-      <label class="lbl">🔔 Avisos antecipados</label>
-      <div class="seg" style="flex-wrap:wrap;gap:6px">
-        ${[3,5,7,10,15].map(d => {
-          const active = !b || !b.reminder_days ? true : b.reminder_days.split(',').map(Number).includes(d);
-          return `<button type="button" class="seg-btn${active ? ' on' : ''}" style="min-width:44px" onclick="toggleReminder(this,${d},'b-reminders')">${d}d</button>`;
-        }).join('')}
-      </div>
-      <input type="hidden" id="b-reminders" value="${b && b.reminder_days ? b.reminder_days : '3,5,7,10,15'}">
+      <label class="lbl">🔔 Avisar quantos dias antes?</label>
+      <input id="b-reminders" type="number" min="1" max="365" inputmode="numeric" placeholder="Ex: 7" value="${b && b.reminder_days ? b.reminder_days : '7'}">
       <div id="b-err"></div>
       <button class="btn-primary" onclick="saveBill(${isEdit ? `'${b.id}'` : 'null'})">${t('save')}</button>
       <button class="btn-secondary" onclick="renderBills()">${t('cancel')}</button>
@@ -773,7 +767,7 @@ async function saveBill(id) {
     limit_amount: limit > 0 ? limit : null,
     currency: g('b-cur').value,
     due_date: ddate,
-    reminder_days: g('b-reminders').value || '3,5,7,10,15',
+    reminder_days: g('b-reminders').value || '7',
     due_day: ddate ? parseInt(ddate.slice(8, 10), 10) : null,
     customer_ref: g('b-ref').value.trim() || null,
     periodicity: g('b-per').value,
