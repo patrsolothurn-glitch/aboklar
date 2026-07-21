@@ -1,4 +1,4 @@
-// AboKlar — build 66 — 2026-07-21T22:58:15.241Z
+// AboKlar — build 67 — 2026-07-21T23:52:58.275Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -1149,6 +1149,23 @@ async function renderHome(user) {
       </div>
     </div>`;
   loadWeather();
+  // Banner de notificações — aparece se não estiverem ativas
+  setTimeout(async () => {
+    const on = await pushIsEnabled();
+    if (on) return;
+    const banner = document.createElement('div');
+    banner.id = 'push-banner';
+    banner.style.cssText = 'position:fixed;bottom:70px;left:12px;right:12px;background:var(--card);border:1px solid var(--acc);border-radius:14px;padding:12px 14px;display:flex;align-items:center;gap:10px;z-index:99;box-shadow:0 4px 16px rgba(0,0,0,.3)';
+    banner.innerHTML = `
+      <span style="font-size:1.4rem">🔔</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:.9rem">${t('push_lbl')}</div>
+        <div style="font-size:.75rem;color:var(--muted)">Recebe avisos de renovações</div>
+      </div>
+      <button onclick="enablePush().then(()=>document.getElementById('push-banner')?.remove())" class="btn-primary" style="padding:7px 12px;font-size:.8rem;min-width:unset">Ativar</button>
+      <button onclick="document.getElementById('push-banner').remove();localStorage.setItem('push-dismissed','1')" style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--muted);padding:4px">✕</button>`;
+    if (!localStorage.getItem('push-dismissed')) document.body.appendChild(banner);
+  }, 1000);
 }
 
 function sectionShell(title, inner, rightBtn = '') {
