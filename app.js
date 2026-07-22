@@ -1,4 +1,4 @@
-// AboKlar — build 69 — 2026-07-21T23:59:40.517Z
+// AboKlar — build 70 — 2026-07-22T00:00:42.120Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -1544,8 +1544,14 @@ function renderSubForm(id) {
       <input type="hidden" id="s-cycle" value="${cycle}">
       <label class="lbl">${t('renewal_date')}</label>
       <input id="s-date" type="date" value="${s && s.renewal_date ? s.renewal_date : ''}">
-      <label class="lbl">🔔 Avisar quantos dias antes?</label>
-      <input id="s-reminders" type="number" min="1" max="365" inputmode="numeric" placeholder="Ex: 7" value="${s && s.reminder_days ? s.reminder_days : '7'}">
+      <label class="lbl">🔔 Avisar antes</label>
+      <div class="seg">
+        ${[3,5,7,10,15].map(d => {
+          const sel = (s && s.reminder_days) ? s.reminder_days === String(d) : d === 7;
+          return `<button type="button" class="seg-btn${sel?' on':''}" onclick="this.parentElement.querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('on'));this.classList.add('on');document.getElementById('s-reminders').value=${d}">${d}d</button>`;
+        }).join('')}
+      </div>
+      <input type="hidden" id="s-reminders" value="${s && s.reminder_days ? s.reminder_days : '7'}">
       <div id="s-err"></div>
       <button class="btn-primary" onclick="saveSub(${isEdit ? `'${s.id}'` : 'null'})">${t('save')}</button>
       <button class="btn-secondary" onclick="renderSubs()">${t('cancel')}</button>
@@ -2344,8 +2350,14 @@ function renderBillForm(id) {
       <input id="b-phone" type="tel" placeholder="${t('phone_ph')}" value="${esc(b && b.phone)}">
       <input id="b-email" type="email" placeholder="${t('email_ph')}" value="${esc(b && b.email)}">
       <input id="b-notes" type="text" placeholder="${t('notes_ph')}" value="${esc(b && b.notes)}">
-      <label class="lbl">🔔 Avisar quantos dias antes?</label>
-      <input id="b-reminders" type="number" min="1" max="365" inputmode="numeric" placeholder="Ex: 7" value="${b && b.reminder_days ? b.reminder_days : '7'}">
+      <label class="lbl">🔔 Avisar antes</label>
+      <div class="seg">
+        ${[3,5,7,10,15].map(d => {
+          const sel = (b && b.reminder_days) ? b.reminder_days === String(d) : d === 7;
+          return `<button type="button" class="seg-btn${sel?' on':''}" onclick="this.parentElement.querySelectorAll('.seg-btn').forEach(b=>b.classList.remove('on'));this.classList.add('on');document.getElementById('b-reminders').value=${d}">${d}d</button>`;
+        }).join('')}
+      </div>
+      <input type="hidden" id="b-reminders" value="${b && b.reminder_days ? b.reminder_days : '7'}">
       <div id="b-err"></div>
       <button class="btn-primary" onclick="saveBill(${isEdit ? `'${b.id}'` : 'null'})">${t('save')}</button>
       <button class="btn-secondary" onclick="renderBills()">${t('cancel')}</button>
