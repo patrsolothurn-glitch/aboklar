@@ -1,4 +1,4 @@
-// AboKlar — build 70 — 2026-07-22T00:00:42.120Z
+// AboKlar — build 71 — 2026-07-25T04:21:46.829Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -1255,7 +1255,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // ===== 04-subs.js =====
 // Subscrições — CRUD + detalhe + estado + ordenação
 const CURRENCIES = ['CHF', 'EUR', 'USD', 'GBP'];
-const PAY_METHODS = ['Débito', 'Cartão', 'Twint', 'Apple Pay', 'Google Pay', 'PayPal', 'MB WAY', 'Transferência', 'Outro'];
+const PAY_METHODS = ['Débito', 'Cartão', 'Twint', 'Apple Pay', 'Google Pay', 'PayPal', 'MB WAY', 'Transferência', 'Cash', 'Outro'];
 const COUNTRIES = ['CH', 'PT', 'DE', 'FR', 'IT', 'AT', 'ES', 'NL', 'BE', 'GB', 'US'];
 let SUBS_CACHE = [];
 let SUBS_SORT = 'date';
