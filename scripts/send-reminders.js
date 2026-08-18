@@ -49,6 +49,34 @@ async function sendPush(subscription, payload) {
   await webpush.default.sendNotification(subscription, JSON.stringify(payload));
 }
 
+// Notificação no dia da renovação (como o Subby)
+async function sendTodayAlerts(subs, bills, pushByUser, webpush) {
+  let sent = 0;
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  for (const s of subs||[]) {
+    const d = nextSub(s); if (!d) continue;
+    if (d.getTime() !== today.getTime()) continue;
+    const pushSubs = pushByUser[s.user_id]; if (!pushSubs?.length) continue;
+    const body = `${s.name} renova hoje — ${s.amount} ${s.currency}`;
+    for (const ps of pushSubs) {
+      try { await webpush.sendNotification(ps.subscription, JSON.stringify({title:'🔔 AboKlar — Renova hoje',body,url:'/'})); sent++; }
+      catch(e) { console.error(e.message); }
+    }
+  }
+  for (const b of bills||[]) {
+    const d = nextBill(b); if (!d) continue;
+    if (d.getTime() !== today.getTime()) continue;
+    const pushSubs = pushByUser[b.user_id]; if (!pushSubs?.length) continue;
+    const body = `${b.name} vence hoje — ${b.reference_amount} ${b.currency}`;
+    for (const ps of pushSubs) {
+      try { await webpush.sendNotification(ps.subscription, JSON.stringify({title:'🔔 AboKlar — Vence hoje',body,url:'/'})); sent++; }
+      catch(e) { console.error(e.message); }
+    }
+  }
+  return sent;
+}
+
 async function main() {
   const today = new Date(); today.setHours(0,0,0,0);
   const [subs, bills] = await Promise.all([
@@ -81,10 +109,19 @@ async function main() {
   const webpush = (await import('web-push')).default;
   webpush.setVapidDetails('mailto:patr.carvalho@hotmail.com', VAPID_PUB, VAPID_PRIV);
 
+  // Buscar todos os push subscriptions
+  const allPush = await query('push_subscriptions');
+  const pushByUser = {};
+  for (const ps of allPush||[]) {
+    if (!pushByUser[ps.user_id]) pushByUser[ps.user_id] = [];
+    pushByUser[ps.user_id].push(ps);
+  }
+
   let sent = 0;
+
+  // Avisos antecipados
   for (const [uid, byDay] of Object.entries(msgs)) {
-    const pushSubs = await query('push_subscriptions', `user_id=eq.${uid}`);
-    if (!pushSubs?.length) continue;
+    const pushSubs = pushByUser[uid]; if (!pushSubs?.length) continue;
     for (const [ds, lines] of Object.entries(byDay)) {
       const n = Number(ds);
       const body = lines.length===1 ? `${lines[0]} vence em ${n} dias` : `${lines.length} pagamentos vencem em ${n} dias`;
@@ -94,6 +131,10 @@ async function main() {
       }
     }
   }
+
+  // Avisos do dia (como Subby)
+  sent += await sendTodayAlerts(subs, bills, pushByUser, webpush);
+
   console.log(`Sent: ${sent}`);
 }
 
