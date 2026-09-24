@@ -59,7 +59,11 @@ async function sendChatMsg() {
       })
     });
     const d = await res.json();
-    CHAT_HISTORY[CHAT_HISTORY.length - 1].content = d.reply || t('err_generic');
+    if (d.error) {
+      CHAT_HISTORY[CHAT_HISTORY.length - 1].content = `Erro ${d.code}: ${d.message}`;
+    } else {
+      CHAT_HISTORY[CHAT_HISTORY.length - 1].content = d.reply || t('err_generic');
+    }
   } catch (e) {
     CHAT_HISTORY[CHAT_HISTORY.length - 1].content = t('err_generic');
   }

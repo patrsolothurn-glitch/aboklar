@@ -8,10 +8,19 @@ try{
 const body=await req.json()
 const msg=body.message||''
 if(!msg)return new Response(JSON.stringify({error:'sem msg'}),{status:400,headers:{...C,'Content-Type':'application/json'}})
-const ar=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+KEY},body:JSON.stringify({model:'llama-3.1-8b-instant',max_tokens:500,messages:[{role:'system',content:'Es o assistente AboKlar. Ajudas utilizadores a gerir subscricoes e faturas mensais. Se conciso, max 3 paragrafos.'},{role:'user',content:msg}]})})
+const ar=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+KEY},body:JSON.stringify({model:'openai/gpt-oss-20b',max_tokens:500,messages:[{role:'system',content:'Es o assistente AboKlar. Ajudas utilizadores a gerir subscricoes e faturas mensais. Se conciso, max 3 paragrafos.'},{role:'user',content:msg}]})})
 const txt=await ar.text()
 console.log('STATUS:',ar.status,txt.slice(0,200))
-if(!ar.ok)return new Response(JSON.stringify({error:'AI '+ar.status}),{status:502,headers:{...C,'Content-Type':'application/json'}})
+if(!ar.ok){
+let errMsg='Erro desconhecido'
+try{
+const errBody=JSON.parse(txt)
+errMsg=(errBody.error&&errBody.error.message)||errBody.message||txt.slice(0,300)
+}catch(_e){
+errMsg=txt.slice(0,300)
+}
+return new Response(JSON.stringify({error:true,code:ar.status,message:errMsg}),{status:200,headers:{...C,'Content-Type':'application/json'}})
+}
 const d=JSON.parse(txt)
 const reply=d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content
 if(!reply)return new Response(JSON.stringify({error:'vazio'}),{status:502,headers:{...C,'Content-Type':'application/json'}})
