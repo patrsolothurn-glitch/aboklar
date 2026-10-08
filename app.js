@@ -1,4 +1,4 @@
-// AboKlar — build 73 — 2026-10-08T09:50:38.790Z
+// AboKlar — build 74 — 2026-10-08T14:01:53.028Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -1577,7 +1577,8 @@ async function saveSub(id) {
   if (!name) { errEl.innerHTML = `<div class="err">${t('err_fill')}</div>`; return; }
   if (!amount || amount <= 0) { errEl.innerHTML = `<div class="err">${t('err_amount')}</div>`; return; }
 
-  const { data: { user } } = await sb.auth.getUser();
+  const { data: { session } } = await sb.auth.getSession();
+  const user = session && session.user;
   const row = {
     user_id: user.id, name,
     website: g('s-website').value.trim() || null,
@@ -2196,7 +2197,8 @@ async function openPaidModal(billId) {
 async function confirmPaid(billId) {
   const amount = parseFloat(document.getElementById('pay-amount').value);
   if (!amount || amount <= 0) return;
-  const { data: { user } } = await sb.auth.getUser();
+  const { data: { session } } = await sb.auth.getSession();
+  const user = session && session.user;
   const { error } = await sb.from('bill_payments').insert({
     bill_id: billId, user_id: user.id, period: curPeriod(), amount
   });
@@ -2377,7 +2379,8 @@ async function saveBill(id) {
   if (!name) { errEl.innerHTML = `<div class="err">${t('err_fill')}</div>`; return; }
   if (g('b-amount').value.trim() !== '' && (isNaN(amount) || amount < 0)) { errEl.innerHTML = `<div class="err">${t('err_amount')}</div>`; return; }
 
-  const { data: { user } } = await sb.auth.getUser();
+  const { data: { session } } = await sb.auth.getSession();
+  const user = session && session.user;
   const row = {
     user_id: user.id, name,
     website: g('b-website').value.trim() || null,
@@ -2431,7 +2434,8 @@ const LANGS = [
 ];
 
 async function loadProfile() {
-  const { data: { user } } = await sb.auth.getUser();
+  const { data: { session } } = await sb.auth.getSession();
+  const user = session && session.user;
   if (!user) return null;
   const { data } = await sb.from('profiles').select('*').eq('id', user.id).single();
   PROFILE = data;
@@ -2502,7 +2506,8 @@ function setTheme(btn, mode) {
 }
 
 async function saveSettings() {
-  const { data: { user } } = await sb.auth.getUser();
+  const { data: { session } } = await sb.auth.getSession();
+  const user = session && session.user;
   const display_name = document.getElementById('set-name').value.trim();
   const nif = document.getElementById('set-nif').value.trim() || null;
   const language = document.getElementById('set-lang').value;
@@ -2572,7 +2577,8 @@ async function enablePush() {
       userVisibleOnly: true,
       applicationServerKey: urlB64ToUint8(VAPID_PUBLIC)
     });
-    const { data: { user } } = await sb.auth.getUser();
+    const { data: { session } } = await sb.auth.getSession();
+    const user = session && session.user;
     await sb.from('push_subscriptions').insert({ user_id: user.id, subscription: sub.toJSON() });
     showToast(t('push_on'));
     return true;
@@ -2856,6 +2862,43 @@ function getChatSession() {
   return CHAT_SESSION;
 }
 
+// Markdown minimal (negrito, itálico, listas, quebras de linha) — escapa HTML primeiro, nunca confia no texto
+function escapeHtml(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function inlineMd(s) {
+  return s
+    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+    .replace(/__([^_]+)__/g, '<b>$1</b>')
+    .replace(/\*([^*]+)\*/g, '<i>$1</i>')
+    .replace(/_([^_]+)_/g, '<i>$1</i>');
+}
+
+function mdToHtml(raw) {
+  const lines = escapeHtml(raw).split('\n');
+  let html = '';
+  let list = null;
+  for (const line of lines) {
+    const m = line.match(/^[-*]\s+(.+)/);
+    if (m) {
+      if (!list) list = [];
+      list.push('<li>' + inlineMd(m[1]) + '</li>');
+      continue;
+    }
+    if (list) { html += '<ul>' + list.join('') + '</ul>'; list = null; }
+    if (html && !html.endsWith('</ul>')) html += '<br>';
+    html += inlineMd(line);
+  }
+  if (list) html += '<ul>' + list.join('') + '</ul>';
+  return html;
+}
+
 async function renderSupportChat() {
   sectionShell(t('help_chat_title'), `
     <div class="chat-hint">${t('help_chat_hint')}</div>
@@ -2873,7 +2916,7 @@ function renderChatMsgs() {
   if (!box) return;
   box.innerHTML = CHAT_HISTORY.map(m => `
     <div class="chat-bubble ${m.role}">
-      <span>${m.content.replace(/\n/g, '<br>')}</span>
+      <span>${mdToHtml(m.content)}</span>
     </div>`).join('');
   box.scrollTop = box.scrollHeight;
 }
@@ -3035,7 +3078,7 @@ async function loadAdminChats() {
           <span class="row-cat">${fmtDate(sess.last_at)}</span>
         </div>
         <div class="admin-msgs">${sess.messages.map(m =>
-          `<div class="chat-bubble ${m.role}">${m.content.replace(/\n/g, '<br>')}</div>`
+          `<div class="chat-bubble ${m.role}">${mdToHtml(m.content)}</div>`
         ).join('')}</div>
         ${!sess.admin_read ? `<button class="btn-secondary" style="margin-top:8px" onclick="markRead('${sess.session_id}')">${t('mark_read')}</button>` : ''}
       </div>
