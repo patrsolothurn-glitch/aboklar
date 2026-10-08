@@ -581,7 +581,8 @@ async function openPaidModal(billId) {
 async function confirmPaid(billId) {
   const amount = parseFloat(document.getElementById('pay-amount').value);
   if (!amount || amount <= 0) return;
-  const { data: { user } } = await sb.auth.getUser();
+  const { data: { session } } = await sb.auth.getSession();
+  const user = session && session.user;
   const { error } = await sb.from('bill_payments').insert({
     bill_id: billId, user_id: user.id, period: curPeriod(), amount
   });
@@ -762,7 +763,8 @@ async function saveBill(id) {
   if (!name) { errEl.innerHTML = `<div class="err">${t('err_fill')}</div>`; return; }
   if (g('b-amount').value.trim() !== '' && (isNaN(amount) || amount < 0)) { errEl.innerHTML = `<div class="err">${t('err_amount')}</div>`; return; }
 
-  const { data: { user } } = await sb.auth.getUser();
+  const { data: { session } } = await sb.auth.getSession();
+  const user = session && session.user;
   const row = {
     user_id: user.id, name,
     website: g('b-website').value.trim() || null,

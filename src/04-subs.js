@@ -322,7 +322,8 @@ async function saveSub(id) {
   if (!name) { errEl.innerHTML = `<div class="err">${t('err_fill')}</div>`; return; }
   if (!amount || amount <= 0) { errEl.innerHTML = `<div class="err">${t('err_amount')}</div>`; return; }
 
-  const { data: { user } } = await sb.auth.getUser();
+  const { data: { session } } = await sb.auth.getSession();
+  const user = session && session.user;
   const row = {
     user_id: user.id, name,
     website: g('s-website').value.trim() || null,

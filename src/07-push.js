@@ -31,7 +31,8 @@ async function enablePush() {
       userVisibleOnly: true,
       applicationServerKey: urlB64ToUint8(VAPID_PUBLIC)
     });
-    const { data: { user } } = await sb.auth.getUser();
+    const { data: { session } } = await sb.auth.getSession();
+    const user = session && session.user;
     await sb.from('push_subscriptions').insert({ user_id: user.id, subscription: sub.toJSON() });
     showToast(t('push_on'));
     return true;

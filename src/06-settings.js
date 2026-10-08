@@ -10,7 +10,8 @@ const LANGS = [
 ];
 
 async function loadProfile() {
-  const { data: { user } } = await sb.auth.getUser();
+  const { data: { session } } = await sb.auth.getSession();
+  const user = session && session.user;
   if (!user) return null;
   const { data } = await sb.from('profiles').select('*').eq('id', user.id).single();
   PROFILE = data;
@@ -81,7 +82,8 @@ function setTheme(btn, mode) {
 }
 
 async function saveSettings() {
-  const { data: { user } } = await sb.auth.getUser();
+  const { data: { session } } = await sb.auth.getSession();
+  const user = session && session.user;
   const display_name = document.getElementById('set-name').value.trim();
   const nif = document.getElementById('set-nif').value.trim() || null;
   const language = document.getElementById('set-lang').value;
