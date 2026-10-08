@@ -1,4 +1,4 @@
-// AboKlar — build 72 — 2026-10-08T04:23:31.017Z
+// AboKlar — build 73 — 2026-10-08T09:50:38.790Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -3011,41 +3011,55 @@ function renderAdminChatsPanel() {
 function setAdminFilter(f) { ADMIN_FILTER = f; renderAdminChatsPanel(); }
 
 async function loadAdminChats() {
-  const { data: { session } } = await sb.auth.getSession();
-  const res = await fetch(`${SUPPORT_URL}?admin=1&filter=${ADMIN_FILTER}`, {
-    headers: {
-      'Authorization': `Bearer ${session ? session.access_token : ''}`,
-      'x-cron-secret': 'aboklar-cron-7k2m9x4p'
-    }
-  });
-  const d = await res.json();
   const box = document.getElementById('admin-chats');
   if (!box) return;
-  const sessions = d.sessions || [];
-  if (!sessions.length) { box.innerHTML = `<p class="muted">—</p>`; return; }
-  box.innerHTML = sessions.map(sess => `
-    <div class="admin-sess" id="sess-${sess.session_id}">
-      <div class="admin-sess-head">
-        <span class="row-name">${sess.display_name || sess.user_email || '?'}${!sess.admin_read ? ' 🔴' : ''}</span>
-        <span class="row-cat">${fmtDate(sess.last_at)}</span>
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    const res = await fetch(`${SUPPORT_URL}?admin=1&filter=${ADMIN_FILTER}`, {
+      headers: {
+        'Authorization': `Bearer ${session ? session.access_token : ''}`,
+        'x-cron-secret': 'aboklar-cron-7k2m9x4p'
+      }
+    });
+    const d = await res.json();
+    if (!res.ok || d.error) {
+      box.innerHTML = `<p class="muted" style="color:var(--err)">Erro ${res.status}: ${d.error || t('err_generic')}</p>`;
+      return;
+    }
+    const sessions = d.sessions || [];
+    if (!sessions.length) { box.innerHTML = `<p class="muted">—</p>`; return; }
+    box.innerHTML = sessions.map(sess => `
+      <div class="admin-sess" id="sess-${sess.session_id}">
+        <div class="admin-sess-head">
+          <span class="row-name">${sess.display_name || sess.user_email || '?'}${!sess.admin_read ? ' 🔴' : ''}</span>
+          <span class="row-cat">${fmtDate(sess.last_at)}</span>
+        </div>
+        <div class="admin-msgs">${sess.messages.map(m =>
+          `<div class="chat-bubble ${m.role}">${m.content.replace(/\n/g, '<br>')}</div>`
+        ).join('')}</div>
+        ${!sess.admin_read ? `<button class="btn-secondary" style="margin-top:8px" onclick="markRead('${sess.session_id}')">${t('mark_read')}</button>` : ''}
       </div>
-      <div class="admin-msgs">${sess.messages.map(m =>
-        `<div class="chat-bubble ${m.role}">${m.content.replace(/\n/g, '<br>')}</div>`
-      ).join('')}</div>
-      ${!sess.admin_read ? `<button class="btn-secondary" style="margin-top:8px" onclick="markRead('${sess.session_id}')">${t('mark_read')}</button>` : ''}
-    </div>
-  `).join('');
+    `).join('');
+  } catch (e) {
+    box.innerHTML = `<p class="muted" style="color:var(--err)">${t('err_generic')}</p>`;
+  }
 }
 
 async function markRead(session_id) {
   const { data: { session } } = await sb.auth.getSession();
-  await fetch(`${SUPPORT_URL}?mark_read=${session_id}`, {
+  const res = await fetch(`${SUPPORT_URL}?mark_read=${session_id}`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${session ? session.access_token : ''}`,
       'x-cron-secret': 'aboklar-cron-7k2m9x4p'
     }
   });
+  if (!res.ok) {
+    let reason = res.status;
+    try { const d = await res.json(); reason = d.error || res.status; } catch (_e) {}
+    alert(`Erro ${res.status}: ${reason}`);
+    return;
+  }
   loadAdminChats();
 }
 
