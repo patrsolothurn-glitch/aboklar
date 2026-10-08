@@ -1,4 +1,4 @@
-// AboKlar — build 71 — 2026-07-25T04:21:46.829Z
+// AboKlar — build 72 — 2026-10-08T04:23:31.017Z
 
 // ===== 00-config.js =====
 // Config Supabase (anon key é pública por design; segurança vem do RLS)
@@ -2907,7 +2907,11 @@ async function sendChatMsg() {
       })
     });
     const d = await res.json();
-    CHAT_HISTORY[CHAT_HISTORY.length - 1].content = d.reply || t('err_generic');
+    if (d.error) {
+      CHAT_HISTORY[CHAT_HISTORY.length - 1].content = `Erro ${d.code}: ${d.message}`;
+    } else {
+      CHAT_HISTORY[CHAT_HISTORY.length - 1].content = d.reply || t('err_generic');
+    }
   } catch (e) {
     CHAT_HISTORY[CHAT_HISTORY.length - 1].content = t('err_generic');
   }
