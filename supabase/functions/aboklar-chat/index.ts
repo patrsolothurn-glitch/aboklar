@@ -73,9 +73,20 @@ const msg=body.message||''
 const sessionId=body.session_id||null
 if(!msg)return new Response(JSON.stringify({error:'sem msg'}),{status:400,headers:{...C,'Content-Type':'application/json'}})
 
+let caller=null
+if(SRK&&SUPA_URL)caller=await getUser(req.headers.get('Authorization')||'',SRK,SUPA_URL)
+if(SRK&&SUPA_URL&&!caller)return new Response(JSON.stringify({error:true,code:401,message:'Inicia sessão para usar o suporte.'}),{status:200,headers:{...C,'Content-Type':'application/json'}})
+
+const LIMITE_DIARIO=30
+if(SRK&&SUPA_URL&&caller){
+const hoje=new Date();hoje.setUTCHours(0,0,0,0)
+const cR=await fetch(SUPA_URL+'/rest/v1/support_chats?select=id&user_id=eq.'+caller.id+'&role=eq.user&created_at=gte.'+hoje.toISOString(),{headers:{apikey:SRK,Authorization:'Bearer '+SRK,Prefer:'count=exact'}})
+const total=parseInt((cR.headers.get('content-range')||'0/0').split('/')[1])||0
+if(total>=LIMITE_DIARIO)return new Response(JSON.stringify({error:true,code:429,message:'Limite diário de mensagens atingido. Tenta novamente amanhã.'}),{status:200,headers:{...C,'Content-Type':'application/json'}})
+}
+
 let base=null
 if(SRK&&SUPA_URL&&sessionId){
-const caller=await getUser(req.headers.get('Authorization')||'',SRK,SUPA_URL)
 base={session_id:sessionId,user_id:caller?caller.id:null,user_email:caller?caller.email:null,display_name:caller?caller.display_name:null}
 await saveMsg(SRK,{...base,role:'user',content:msg},SUPA_URL)
 }
