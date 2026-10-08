@@ -85,8 +85,7 @@ async function sendChatMsg() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session ? session.access_token : ''}`,
-        'x-cron-secret': 'aboklar-cron-7k2m9x4p'
+        'Authorization': `Bearer ${session ? session.access_token : ''}`
       },
       body: JSON.stringify({
         message: msg,
@@ -206,8 +205,7 @@ async function loadAdminChats() {
     const { data: { session } } = await sb.auth.getSession();
     const res = await fetch(`${SUPPORT_URL}?admin=1&filter=${ADMIN_FILTER}`, {
       headers: {
-        'Authorization': `Bearer ${session ? session.access_token : ''}`,
-        'x-cron-secret': 'aboklar-cron-7k2m9x4p'
+        'Authorization': `Bearer ${session ? session.access_token : ''}`
       }
     });
     const d = await res.json();
@@ -239,8 +237,7 @@ async function markRead(session_id) {
   const res = await fetch(`${SUPPORT_URL}?mark_read=${session_id}`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${session ? session.access_token : ''}`,
-      'x-cron-secret': 'aboklar-cron-7k2m9x4p'
+      'Authorization': `Bearer ${session ? session.access_token : ''}`
     }
   });
   if (!res.ok) {
